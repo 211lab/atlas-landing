@@ -18,20 +18,22 @@
     html, body {
       margin: 0;
       padding: 0;
-      height: 100%;
       background: #0b0d10;
     }
-    .hero {
-      position: fixed;
-      inset: 0;
-      background-image: url('/hero.jpg');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .banner {
+      display: block;
+      width: 100%;
+      height: auto;
     }
   </style>
 </head>
 <body>
-  <div class="hero" role="img" aria-label="Atlas graffiti wordmark"></div>
+  <img class="banner" src="/hero.jpg" alt="Atlas graffiti wordmark">
 </body>
 </html>
