@@ -1,0 +1,43 @@
+name: build
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    container:
+      image: docker:25-git
+    env:
+      REGISTRY: registry.example.invalid
+      REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+      REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+    steps:
+      - name: Checkout
+        run: git clone "http://oauth2:${REGISTRY_TOKEN}@forge.example.invalid/example-owner/atlas-landing.git" .
+
+      - name: Configure registry auth
+        run: |
+          mkdir -p ~/.docker
+          AUTH=$(printf '%s:%s' "${REGISTRY_USER}" "${REGISTRY_TOKEN}" | base64 | tr -d '\n')
+          printf '{"auths":{"%s":{"auth":"%s"}}}' "${REGISTRY}" "${AUTH}" > ~/.docker/config.json
+
+      - name: Build and push
+        run: |
+          set -e
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then TAG="${GITHUB_REF_NAME}"; else TAG="sha-$(echo "${GITHUB_SHA}" | cut -c1-7)"; fi
+          docker build -t "${REGISTRY}/example-owner/atlas-landing:${TAG}" .
+          docker push "${REGISTRY}/example-owner/atlas-landing:${TAG}"
+
+      - name: Promote tag to GitOps repo
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME}"
+          git clone "http://oauth2:${REGISTRY_TOKEN}@forge.example.invalid/example-owner/gitops.git" /tmp/gitops
+          cd /tmp/gitops
+          sed -i -E "s|^  tag: .*|  tag: ${TAG}|" "apps/atlas-landing/chart/values.yaml"
+          git diff --quiet && exit 0
+          git -c user.email=atlas-ci@example.invalid -c user.name=atlas-ci commit -am "ci: promote atlas-landing ${TAG}"
+          git push origin main
