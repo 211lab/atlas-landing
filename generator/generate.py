@@ -52,12 +52,12 @@ WILDSTYLES = [
      "across the paint, while the piece itself stays clean."),
     ("W3-half-lit-decay",
      "Half of the piece glows with healthy neon while the other half flickers "
-     "or is burnt out; the surrounding mega-city wall carries peeling posters, "
+     "or is burnt out; the surrounding mega-city wall carries peeling paint, "
      "dangling cables and steam vents."),
     ("W4-post-apocalyptic",
      "The neon is weathered, scratched and scorched, fighting to stay lit on "
-     "a ruined wall of cracked concrete, exposed rebar and dead billboard "
-     "fragments, with drifting ash and a single working drone light."),
+     "a ruined wall of cracked concrete and exposed rebar, with drifting ash "
+     "and a single working drone light."),
 ]
 
 
