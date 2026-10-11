@@ -203,9 +203,15 @@ def fetch_weather() -> dict:
            f"&current={params}&timezone=auto")
     data = http_json(url)
     cur = data.get("current", {})
+    temp_c = cur.get("temperature_2m")
+    temperature_f = temp_c * 9 / 5 + 32 if isinstance(temp_c, (int, float)) else None
+    apparent_c = cur.get("apparent_temperature")
+    apparent_f = apparent_c * 9 / 5 + 32 if isinstance(apparent_c, (int, float)) else None
     return {
-        "temperature_c": cur.get("temperature_2m"),
-        "apparent_c": cur.get("apparent_temperature"),
+        "temperature_c": temp_c,
+        "temperature_f": temperature_f,
+        "apparent_c": apparent_c,
+        "apparent_f": apparent_f,
         "humidity": cur.get("relative_humidity_2m"),
         "precipitation_mm": cur.get("precipitation"),
         "cloud_cover": cur.get("cloud_cover"),
@@ -273,10 +279,13 @@ def weather_elements(w: dict) -> str:
     else:
         sky = f"{cloud_txt}"
 
+    temp_f = w.get("temperature_f")
+    temp_txt = (f"around {temp_f:.0f}°F"
+                if isinstance(temp_f, (int, float)) else "temperature unknown")
     parts = [
         f"It is {phase} in {PLACE}",
         f"the sky shows {sky}",
-        f"around {w.get('temperature_c')}°C",
+        temp_txt,
         f"with {wind_txt}",
     ]
     if precip:
@@ -571,7 +580,7 @@ def verify_image(image_bytes: bytes, w: dict) -> dict:
                 "or visualization rather than a flat illustration, cartoon or "
                 "painting. matches_weather is true only if the scene, weather "
                 f"effects and lighting are consistent with: {cond}, temperature "
-                f"{w.get('temperature_c')}°C, {phase}. framing_ok is true "
+                f"{w.get('temperature_f'):.0f}°F, {phase}. framing_ok is true "
                 "only if the complete five-letter word ATLAS stays fully "
                 "inside the frame with no letter clipped by an image edge, "
                 "remains the dominant subject and stays legible from the "
@@ -638,9 +647,13 @@ def _gallery_card(name: str, info: dict) -> str:
         return val
 
     bits = [str(wxval("label", "label") or "unknown weather")]
-    temp = wxval("temperature_c", "temperature_c")
-    if isinstance(temp, (int, float)):
-        bits.append(f"{temp:.0f}°C")
+    temp_f = wxval("temperature_f", "temperature_f")
+    if temp_f is None:
+        temp_c = wxval("temperature_c", "temperature_c")
+        if isinstance(temp_c, (int, float)):
+            temp_f = temp_c * 9 / 5 + 32
+    if isinstance(temp_f, (int, float)):
+        bits.append(f"{temp_f:.0f}°F")
     for key, fmt, label in (("wind_kmh", "{:.0f} km/h", "wind"),
                             ("humidity", "{:.0f}%", "RH"),
                             ("cloud_cover", "{:.0f}%", "clouds"),
@@ -749,7 +762,7 @@ def main() -> int:
     log(f"fetching weather for {PLACE} ({LAT},{LON})")
     weather = fetch_weather()
     log(f"conditions: {WMO.get(weather['code'], 'n/a')}, "
-        f"{weather['temperature_c']}°C, day={weather['is_day']}")
+        f"{weather['temperature_f']:.0f}°F, day={weather['is_day']}")
 
     style_id, style_txt = pick_wildstyle()
     log(f"wildstyle treatment: {style_id}")
@@ -781,6 +794,7 @@ def main() -> int:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "generated_at_local": local_dt.strftime("%Y-%m-%d %H:%M"),
         "label": WMO.get(weather["code"], "weather"),
+        "temperature_f": weather["temperature_f"],
         "temperature_c": weather["temperature_c"],
         "is_day": weather["is_day"],
         "wildstyle": style_id,
@@ -792,7 +806,9 @@ def main() -> int:
         "weather": {
             "label": WMO.get(weather["code"], "weather"),
             "code": weather.get("code"),
+            "temperature_f": weather.get("temperature_f"),
             "temperature_c": weather.get("temperature_c"),
+            "apparent_f": weather.get("apparent_f"),
             "apparent_c": weather.get("apparent_c"),
             "humidity": weather.get("humidity"),
             "precipitation_mm": weather.get("precipitation_mm"),
