@@ -9,10 +9,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt \
+    && rm -rf /root/.cache
+
 COPY generator/ /app/generator/
 COPY seed/ /app/seed/
-
-RUN pip install --no-cache-dir pillow==11.3.0 \
-    && rm -rf /root/.cache
 
 CMD ["python3", "/app/generator/generate.py"]

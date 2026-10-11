@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Compile and test
+        run: |
+          python -m py_compile generator/generate.py
+          python -m unittest discover -s tests
+      - name: Scan for secrets
+        uses: gitleaks/gitleaks-action@v2
+      - name: Build container
+        run: docker build -t atlas-background:test .

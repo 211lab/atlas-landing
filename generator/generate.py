@@ -7,7 +7,7 @@ asks an OpenRouter image model for a photorealistic scene in which the word
 result. Only images that pass verification replace the served background; any
 failure leaves the previous image untouched.
 
-No third-party packages: standard library only, so the runtime image stays small.
+Pillow is the only third-party dependency, used to strip model letterboxing and normalize image output.
 """
 
 from __future__ import annotations
@@ -31,9 +31,10 @@ WEATHER_URL = os.environ.get(
     "WEATHER_URL", "https://api.open-meteo.com/v1/forecast"
 )
 
-LAT = os.environ.get("WEATHER_LAT", "<latitude>")
-LON = os.environ.get("WEATHER_LON", "<longitude>")
-PLACE = os.environ.get("WEATHER_PLACE", "<configured-place>")
+LAT = os.environ.get("WEATHER_LAT", "").strip()
+LON = os.environ.get("WEATHER_LON", "").strip()
+PLACE = os.environ.get("WEATHER_PLACE", "").strip()
+WEATHER_LABEL = os.environ.get("WEATHER_LABEL", "").strip()
 
 IMAGE_MODEL = os.environ.get("IMAGE_MODEL", "google/gemini-2.5-flash-image")
 VISION_MODEL = os.environ.get("VISION_MODEL", "google/gemini-2.5-flash")
@@ -191,6 +192,25 @@ def http_json(url: str, payload: dict | None = None, headers: dict | None = None
                 continue
             raise
     raise last_err if last_err else RuntimeError("request failed")
+
+
+def validate_location_config(lat: str, lon: str, place: str,
+                             label: str) -> str | None:
+    missing = [name for name, value in (
+        ("WEATHER_LAT", lat), ("WEATHER_LON", lon),
+        ("WEATHER_PLACE", place), ("WEATHER_LABEL", label),
+    ) if not value]
+    if missing:
+        return "missing required location settings: " + ", ".join(missing)
+    try:
+        latitude, longitude = float(lat), float(lon)
+    except ValueError:
+        return "WEATHER_LAT and WEATHER_LON must be numeric"
+    if not -90 <= latitude <= 90:
+        return "WEATHER_LAT must be between -90 and 90"
+    if not -180 <= longitude <= 180:
+        return "WEATHER_LON must be between -180 and 180"
+    return None
 
 
 def fetch_weather() -> dict:
@@ -450,7 +470,7 @@ def build_prompt(w: dict, style_txt: str, camera_txt: str) -> str:
         "the visual impact come from the letterforms, monumental scale, "
         "material realism, architectural atmosphere and dramatic light. "
 
-        f"LOCAL CONDITIONS at <configured-weather-area>, rendered faithfully into the scene: "
+        f"LOCAL CONDITIONS near {WEATHER_LABEL}, rendered faithfully into the scene: "
         f"{weather}. "
 
         f"LIGHTING AND ATMOSPHERE: {light} "
@@ -756,6 +776,10 @@ def main() -> int:
     if not API_KEY:
         log("OPENROUTER_API_KEY is not set")
         return 2
+    config_error = validate_location_config(LAT, LON, PLACE, WEATHER_LABEL)
+    if config_error:
+        log(config_error)
+        return 2
 
     os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -802,6 +826,7 @@ def main() -> int:
         "image_model": IMAGE_MODEL,
         "vision_model": VISION_MODEL,
         "place": PLACE,
+        "weather_area": WEATHER_LABEL,
         "prompt": prompt,
         "weather": {
             "label": WMO.get(weather["code"], "weather"),

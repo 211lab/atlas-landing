@@ -10,34 +10,48 @@ jobs:
     container:
       image: docker:25-git
     env:
-      REGISTRY: registry.example.invalid
+      FORGE_HTTP_HOST: ${{ secrets.FORGE_HTTP_HOST }}
+      APP_REPO_PATH: ${{ secrets.APP_REPO_PATH }}
+      GITOPS_REPO_PATH: ${{ secrets.GITOPS_REPO_PATH }}
+      IMAGE_REGISTRY: ${{ secrets.IMAGE_REGISTRY }}
+      IMAGE_PATH: ${{ secrets.IMAGE_PATH }}
+      GITOPS_VALUES_PATH: ${{ secrets.GITOPS_VALUES_PATH }}
       REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
       REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
     steps:
       - name: Checkout
-        run: git clone "http://oauth2:${REGISTRY_TOKEN}@forge.example.invalid/example-owner/atlas-landing.git" .
+        run: |
+          set -eu
+          : "${FORGE_HTTP_HOST:?Set the forge HTTP host action secret}"
+          : "${APP_REPO_PATH:?Set the app repository path action secret}"
+          git clone "http://oauth2:${REGISTRY_TOKEN}@${FORGE_HTTP_HOST}/${APP_REPO_PATH}.git" .
 
       - name: Configure registry auth
         run: |
+          set -eu
+          : "${IMAGE_REGISTRY:?Set the registry host action secret}"
+          : "${IMAGE_PATH:?Set the image path action secret}"
           mkdir -p ~/.docker
           AUTH=$(printf '%s:%s' "${REGISTRY_USER}" "${REGISTRY_TOKEN}" | base64 | tr -d '\n')
-          printf '{"auths":{"%s":{"auth":"%s"}}}' "${REGISTRY}" "${AUTH}" > ~/.docker/config.json
+          printf '{"auths":{"%s":{"auth":"%s"}}}' "${IMAGE_REGISTRY}" "${AUTH}" > ~/.docker/config.json
 
       - name: Build and push
         run: |
-          set -e
+          set -eu
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then TAG="${GITHUB_REF_NAME}"; else TAG="sha-$(echo "${GITHUB_SHA}" | cut -c1-7)"; fi
-          docker build -t "${REGISTRY}/example-owner/atlas-landing:${TAG}" .
-          docker push "${REGISTRY}/example-owner/atlas-landing:${TAG}"
+          docker build -t "${IMAGE_REGISTRY}/${IMAGE_PATH}:${TAG}" .
+          docker push "${IMAGE_REGISTRY}/${IMAGE_PATH}:${TAG}"
 
       - name: Promote tag to GitOps repo
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          set -e
+          set -eu
+          : "${GITOPS_REPO_PATH:?Set the GitOps repository path action secret}"
+          : "${GITOPS_VALUES_PATH:?Set the GitOps values path action secret}"
           TAG="${GITHUB_REF_NAME}"
-          git clone "http://oauth2:${REGISTRY_TOKEN}@forge.example.invalid/example-owner/gitops.git" /tmp/gitops
+          git clone "http://oauth2:${REGISTRY_TOKEN}@${FORGE_HTTP_HOST}/${GITOPS_REPO_PATH}.git" /tmp/gitops
           cd /tmp/gitops
-          sed -i -E "s|^  tag: .*|  tag: ${TAG}|" "apps/atlas-landing/chart/values.yaml"
+          sed -i -E "s|^  tag: .*|  tag: ${TAG}|" "${GITOPS_VALUES_PATH}"
           git diff --quiet && exit 0
-          git -c user.email=atlas-ci@example.invalid -c user.name=atlas-ci commit -am "ci: promote atlas-landing ${TAG}"
+          git -c user.email=atlas-ci@users.noreply.github.com -c user.name=atlas-ci commit -am "ci: promote atlas-landing ${TAG}"
           git push origin main

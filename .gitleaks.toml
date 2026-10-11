@@ -1,0 +1,4 @@
+title = "atlas-landing"
+
+[extend]
+useDefault = true
