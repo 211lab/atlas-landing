@@ -171,12 +171,19 @@ def build_prompt(w: dict) -> str:
     temp = w.get("temperature_c")
     temp_txt = f"{temp:.0f}°C" if isinstance(temp, (int, float)) else "unknown"
     return (
-        "A photorealistic, cinematic wide photograph of a real urban scene, "
-        f"shot in {PLACE} during {sky}. Conditions: "
+        "A photorealistic, cinematic wide 16:9 photograph of a real urban "
+        f"scene, shot in {PLACE} during {sky}. Conditions: "
         f"{WMO.get(w['code'], 'variable weather')}, around {temp_txt}, "
-        f"wind {w.get('wind_kmh')} km/h. Show a textured wall or structure "
-        "where the word \"Atlas\" is painted as large, bold graffiti, "
-        "integrated into the scene and lit naturally by the weather. "
+        f"wind {w.get('wind_kmh')} km/h. "
+        "Composition is the priority: the graffiti word \"Atlas\" is the "
+        "focal point and sits exactly in the centre of the frame, horizontally "
+        "and vertically, covering no more than the middle half of the frame "
+        "width, so a centre crop to a portrait aspect ratio still contains the "
+        "entire word with breathing room. The rest of the scene extends "
+        "symmetrically to both edges, so nothing important is lost when the "
+        "sides are cropped on a phone. Show a textured wall or structure where "
+        "the word \"Atlas\" is painted as large, bold graffiti, integrated "
+        "into the scene and lit naturally by the weather. "
         "The word \"Atlas\" must be spelled exactly A-t-l-a-s, and it must be "
         "the only text or lettering anywhere in the image. "
         "Gritty, wet-street realism; shallow depth of field; 35mm photograph, "
@@ -209,15 +216,20 @@ def verify_image(image_bytes: bytes, w: dict) -> dict:
             "text": (
                 "You are a strict image reviewer. Inspect the attached image "
                 "and reply with ONLY a JSON object with boolean keys "
-                "\"spelling_ok\", \"photorealistic\", \"matches_weather\", and a "
-                "short string \"notes\". spelling_ok is true only if the word "
-                "\"Atlas\" appears exactly once, spelled A-t-l-a-s, and no other "
-                "text or lettering appears. photorealistic is true only if the "
-                "image looks like a real photograph rather than an illustration, "
-                "3D render or painting. matches_weather is true only if the scene "
-                f"is consistent with: {WMO.get(w['code'], 'variable weather')}, "
-                f"temperature {w.get('temperature_c')}°C, "
-                f"{'daytime' if w['is_day'] else 'night'}. "
+                "\"spelling_ok\", \"photorealistic\", \"matches_weather\", "
+                "\"centered_ok\", and a short string \"notes\". spelling_ok is "
+                "true only if the word \"Atlas\" appears exactly once, spelled "
+                "A-t-l-a-s, and no other text or lettering appears. "
+                "photorealistic is true only if the image looks like a real "
+                "photograph rather than an illustration, 3D render or painting. "
+                "matches_weather is true only if the scene is consistent with: "
+                f"{WMO.get(w['code'], 'variable weather')}, temperature "
+                f"{w.get('temperature_c')}°C, "
+                f"{'daytime' if w['is_day'] else 'night'}. centered_ok is true "
+                "only if the word \"Atlas\" sits in the horizontal centre of "
+                "the frame, spans no more than roughly the middle half of the "
+                "frame width, and would survive a centre crop to portrait "
+                "aspect without cutting the word. "
                 "Do not add any prose outside the JSON."
             ),
         },
@@ -276,7 +288,7 @@ def main() -> int:
     log(f"verdict: {json.dumps(verdict)}")
 
     if not (verdict.get("spelling_ok") and verdict.get("photorealistic")
-            and verdict.get("matches_weather")):
+            and verdict.get("matches_weather") and verdict.get("centered_ok")):
         log("verification failed; keeping the existing background")
         return 1
 
