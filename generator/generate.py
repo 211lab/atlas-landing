@@ -13,6 +13,7 @@ No third-party packages: standard library only, so the runtime image stays small
 from __future__ import annotations
 
 import base64
+import html
 import io
 import json
 import os
@@ -21,7 +22,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from PIL import Image
 
@@ -213,9 +214,7 @@ def fetch_weather() -> dict:
         "code": int(cur.get("weather_code", 0) or 0),
         "observed_at": cur.get("time"),
         "local_hour": int(str(cur.get("time", "")).split("T")[-1].split(":")[0] or 0),
-        "cloud_cover": cur.get("cloud_cover"),
-        "precipitation_mm": cur.get("precipitation"),
-        "humidity": cur.get("relative_humidity_2m"),
+        "utc_offset_seconds": int(data.get("utc_offset_seconds") or 0),
         "place": PLACE,
     }
 
@@ -624,33 +623,64 @@ def _gallery_slug(meta: dict) -> str:
     return f"{stamp}-{meta.get('wildstyle', 'unknown')}"
 
 
+def _gallery_card(name: str, info: dict) -> str:
+    """Render one gallery card: thumbnail, corrected meta, expandable prompt."""
+    when = info.get("generated_at_local")
+    if not when:
+        when = str(info.get("generated_at", ""))[:16].replace("T", " ") + " UTC"
+    wx = info.get("weather") or {}
+
+    def wxval(key: str, fallback_key: str | None = None):
+        val = wx.get(key)
+        if val is None and fallback_key:
+            val = info.get(fallback_key)
+        return val
+
+    bits = [str(wxval("label", "label") or "unknown weather")]
+    temp = wxval("temperature_c", "temperature_c")
+    if isinstance(temp, (int, float)):
+        bits.append(f"{temp:.0f}°C")
+    for key, fmt, label in (("wind_kmh", "{:.0f} km/h", "wind"),
+                            ("humidity", "{:.0f}%", "RH"),
+                            ("cloud_cover", "{:.0f}%", "clouds"),
+                            ("precipitation_mm", "{:.1f} mm/h", "precip")):
+        val = wxval(key)
+        if isinstance(val, (int, float)):
+            bits.append(f"{label} {fmt.format(val)}")
+    if "is_day" in wx or "is_day" in info:
+        bits.append("day" if wxval("is_day", "is_day") else "night")
+    style = str(info.get("wildstyle", "")).split("-", 1)[-1].replace("-", " ")
+
+    caption = (f"{when} local · " + ", ".join(bits)
+               + (f" · {style}" if style else ""))
+    prompt_html = ""
+    if info.get("prompt"):
+        prompt_html = (
+            "<details><summary>prompt</summary>"
+            f"<pre>{html.escape(str(info['prompt']))}</pre></details>"
+        )
+    return (
+        f'<figure class="card">'
+        f'<a href="{name}"><img loading="lazy" src="thumbs/{name}" '
+        f'alt="Atlas background"></a>'
+        f"<figcaption><span>{html.escape(caption)}</span>{prompt_html}"
+        f"</figcaption></figure>"
+    )
+
+
 def _render_gallery_index() -> None:
     """Rewrite the static gallery page from the archived images."""
-    entries = []
+    cards = []
     for name in sorted(os.listdir(GALLERY_DIR), reverse=True):
         if not name.endswith(".jpg"):
             continue
-        sidecar = os.path.join(GALLERY_DIR, f"{name}.json")
+        base = name[:-4]
+        sidecar = os.path.join(GALLERY_DIR, f"{base}.json")
         info = {}
         if os.path.exists(sidecar):
             with open(sidecar) as fh:
                 info = json.load(fh)
-        entries.append((name, info))
-
-    items = []
-    for name, info in entries:
-        when = str(info.get("generated_at", ""))[:16].replace("T", " ")
-        label = info.get("label", "unknown weather")
-        style = str(info.get("wildstyle", "")).split("-", 1)[-1].replace("-", " ")
-        temp = info.get("temperature_c")
-        caption = (f"{when} UTC · {label}"
-                   + (f", {temp:.0f}°C" if isinstance(temp, (int, float)) else "")
-                   + (f" · {style}" if style else ""))
-        items.append(
-            f'<a class="card" href="{name}">'
-            f'<img loading="lazy" src="thumbs/{name}" alt="Atlas background">'
-            f"<span>{caption}</span></a>"
-        )
+        cards.append(_gallery_card(name, info))
 
     css = (
         "body{margin:0;background:#0b0d10;color:#cbd5e1;"
@@ -658,21 +688,26 @@ def _render_gallery_index() -> None:
         "h1{font-size:1.2rem;margin:1rem 1.2rem}"
         "main{display:grid;grid-template-columns:repeat(auto-fill,"
         "minmax(260px,1fr));gap:.8rem;padding:0 1.2rem 2rem}"
-        ".card{display:block;text-decoration:none;color:inherit;"
+        ".card{display:block;margin:0;text-decoration:none;color:inherit;"
         "background:#151a21;border-radius:.5rem;overflow:hidden}"
         ".card img{width:100%;height:auto;display:block}"
-        ".card span{display:block;padding:.5rem .6rem;font-size:.75rem;"
-        "color:#94a3b8}"
+        ".card figcaption span{display:block;padding:.5rem .6rem;"
+        "font-size:.72rem;color:#94a3b8}"
+        ".card details{margin:.2rem .6rem .6rem}"
+        ".card summary{cursor:pointer;font-size:.68rem;color:#7f96ab}"
+        ".card pre{white-space:pre-wrap;word-break:break-word;"
+        "font-size:.62rem;line-height:1.35;color:#8aa0b4;"
+        "max-height:14rem;overflow:auto;margin:.4rem 0 0}"
     )
-    html = (
+    html_doc = (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        f"<title>Atlas background gallery ({len(entries)})</title>"
+        f"<title>Atlas background gallery ({len(cards)})</title>"
         f"<style>{css}</style></head><body>"
-        f"<h1>Atlas background gallery ({len(entries)})</h1>"
-        f'<main>{"".join(items)}</main></body></html>'
+        f"<h1>Atlas background gallery ({len(cards)})</h1>"
+        f'<main>{"".join(cards)}</main></body></html>'
     )
-    atomic_write(os.path.join(GALLERY_DIR, "index.html"), html.encode())
+    atomic_write(os.path.join(GALLERY_DIR, "index.html"), html_doc.encode())
 
 
 def archive_gallery(image: bytes, meta: dict) -> tuple[bool, str]:
@@ -736,9 +771,14 @@ def main() -> int:
         return 1
 
     atomic_write(IMAGE_PATH, image)
+    # Local wall-clock time in the target place, derived from Open-Meteo's
+    # UTC offset so no timezone database is needed.
+    local_dt = datetime.now(timezone.utc) + timedelta(
+        seconds=int(weather.get("utc_offset_seconds") or 0))
     meta = {
         "source": "openrouter",
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at_local": local_dt.strftime("%Y-%m-%d %H:%M"),
         "label": WMO.get(weather["code"], "weather"),
         "temperature_c": weather["temperature_c"],
         "is_day": weather["is_day"],
@@ -747,6 +787,20 @@ def main() -> int:
         "image_model": IMAGE_MODEL,
         "vision_model": VISION_MODEL,
         "place": PLACE,
+        "prompt": prompt,
+        "weather": {
+            "label": WMO.get(weather["code"], "weather"),
+            "code": weather.get("code"),
+            "temperature_c": weather.get("temperature_c"),
+            "apparent_c": weather.get("apparent_c"),
+            "humidity": weather.get("humidity"),
+            "precipitation_mm": weather.get("precipitation_mm"),
+            "cloud_cover": weather.get("cloud_cover"),
+            "wind_kmh": weather.get("wind_kmh"),
+            "is_day": weather.get("is_day"),
+            "local_hour": weather.get("local_hour"),
+            "observed_at": weather.get("observed_at"),
+        },
         "verdict": verdict,
     }
     gallery_ok, gallery_note = archive_gallery(image, meta)
