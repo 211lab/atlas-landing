@@ -470,6 +470,94 @@ def atomic_write(path: str, data: bytes) -> None:
     os.replace(tmp, path)
 
 
+GALLERY_DIR = os.path.join(DATA_DIR, "gallery")
+THUMB_WIDTH = 480
+
+
+def _gallery_slug(meta: dict) -> str:
+    stamp = str(meta.get("generated_at", "")).replace("-", "").replace(":", "")
+    return f"{stamp}-{meta.get('wildstyle', 'unknown')}"
+
+
+def _render_gallery_index() -> None:
+    """Rewrite the static gallery page from the archived images."""
+    entries = []
+    for name in sorted(os.listdir(GALLERY_DIR), reverse=True):
+        if not name.endswith(".jpg"):
+            continue
+        sidecar = os.path.join(GALLERY_DIR, f"{name}.json")
+        info = {}
+        if os.path.exists(sidecar):
+            with open(sidecar) as fh:
+                info = json.load(fh)
+        entries.append((name, info))
+
+    items = []
+    for name, info in entries:
+        when = str(info.get("generated_at", ""))[:16].replace("T", " ")
+        label = info.get("label", "unknown weather")
+        style = str(info.get("wildstyle", "")).split("-", 1)[-1].replace("-", " ")
+        temp = info.get("temperature_c")
+        caption = (f"{when} UTC · {label}"
+                   + (f", {temp:.0f}°C" if isinstance(temp, (int, float)) else "")
+                   + (f" · {style}" if style else ""))
+        items.append(
+            f'<a class="card" href="{name}">'
+            f'<img loading="lazy" src="thumbs/{name}" alt="Atlas background">'
+            f"<span>{caption}</span></a>"
+        )
+
+    css = (
+        "body{margin:0;background:#0b0d10;color:#cbd5e1;"
+        "font-family:system-ui,sans-serif}"
+        "h1{font-size:1.2rem;margin:1rem 1.2rem}"
+        "main{display:grid;grid-template-columns:repeat(auto-fill,"
+        "minmax(260px,1fr));gap:.8rem;padding:0 1.2rem 2rem}"
+        ".card{display:block;text-decoration:none;color:inherit;"
+        "background:#151a21;border-radius:.5rem;overflow:hidden}"
+        ".card img{width:100%;height:auto;display:block}"
+        ".card span{display:block;padding:.5rem .6rem;font-size:.75rem;"
+        "color:#94a3b8}"
+    )
+    html = (
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        f"<title>Atlas background gallery ({len(entries)})</title>"
+        f"<style>{css}</style></head><body>"
+        f"<h1>Atlas background gallery ({len(entries)})</h1>"
+        f'<main>{"".join(items)}</main></body></html>'
+    )
+    atomic_write(os.path.join(GALLERY_DIR, "index.html"), html.encode())
+
+
+def archive_gallery(image: bytes, meta: dict) -> tuple[bool, str]:
+    """Archive the accepted image and refresh the static gallery page.
+
+    Non-fatal by design: the homepage background is already published when
+    this runs, and a gallery problem must not fail the whole generation.
+    """
+    try:
+        os.makedirs(os.path.join(GALLERY_DIR, "thumbs"), exist_ok=True)
+        slug = _gallery_slug(meta)
+
+        atomic_write(os.path.join(GALLERY_DIR, f"{slug}.jpg"), image)
+        atomic_write(os.path.join(GALLERY_DIR, f"{slug}.json"),
+                     json.dumps(meta, indent=2).encode())
+
+        with Image.open(io.BytesIO(image)) as img:
+            ratio = THUMB_WIDTH / img.width
+            thumb = img.resize((THUMB_WIDTH, max(1, round(img.height * ratio))))
+            buf = io.BytesIO()
+            thumb.convert("RGB").save(buf, "JPEG", quality=80)
+        atomic_write(os.path.join(GALLERY_DIR, "thumbs", f"{slug}.jpg"),
+                     buf.getvalue())
+
+        _render_gallery_index()
+        return True, ""
+    except Exception as err:  # noqa: BLE001 - archiving must not kill the run
+        return False, f"{type(err).__name__}: {err}"
+
+
 def main() -> int:
     if not API_KEY:
         log("OPENROUTER_API_KEY is not set")
@@ -511,6 +599,13 @@ def main() -> int:
         "place": PLACE,
         "verdict": verdict,
     }
+    gallery_ok, gallery_note = archive_gallery(image, meta)
+    meta["gallery_ok"] = gallery_ok
+    if gallery_note:
+        meta["gallery_note"] = gallery_note
+        log(f"gallery archive failed: {gallery_note}")
+    else:
+        log("archived image to the gallery")
     atomic_write(META_PATH, json.dumps(meta, indent=2).encode())
     log(f"published new background to {IMAGE_PATH}")
     return 0
