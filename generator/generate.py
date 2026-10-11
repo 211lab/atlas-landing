@@ -53,12 +53,13 @@ WILDSTYLES = [
      "across the paint, while the piece itself stays clean."),
     ("W3-half-lit-decay",
      "Half of the piece glows with healthy neon while the other half flickers "
-     "or is burnt out; the surrounding mega-city wall carries peeling paint, "
-     "dangling cables and steam vents."),
+     "or is burnt out; the surrounding mega-city wall shows only peeling "
+     "paint, dangling cables and steam vents, with no other markings "
+     "anywhere."),
     ("W4-post-apocalyptic",
      "The neon is weathered, scratched and scorched, fighting to stay lit on "
      "a ruined wall of cracked concrete and exposed rebar, with drifting ash "
-     "and a single working drone light."),
+     "and a single working drone light, and no other markings on the wall."),
 ]
 
 
@@ -494,8 +495,9 @@ def build_prompt(w: dict, style_txt: str, camera_txt: str) -> str:
         "or artificial stretching. No panoramic framing, no extreme "
         "wide-angle distortion, no additional words, no captions, "
         "no logos, no watermarks, no decorative borders, no black "
-        "bars, no letterboxing and no other text of any kind. "
-        "The artwork fills the whole canvas."
+        "bars, no letterboxing and no other text of any kind. The surface "
+        "around the ATLAS piece is otherwise bare: no background tags or "
+        "markings. The artwork fills the whole canvas."
     )
 
 
@@ -555,12 +557,16 @@ def verify_image(image_bytes: bytes, w: dict) -> dict:
                 "\"framing_ok\", and a short string \"notes\". spelling_ok is "
                 "true only if the uppercase word \"ATLAS\" appears exactly "
                 "once, spelled A-T-L-A-S in that order, and it is the only "
-                "word in the image. Wildstyle elements that are integral "
-                "parts of the letters themselves — arrows, extensions, "
-                "cross-outs, flourishes, circuit traces or chrome accents — "
-                "do NOT count as other text. spelling_ok is false only if "
-                "there are separate additional words, letters, tags, "
-                "captions, logos or signatures besides the ATLAS piece. "
+                "readable word in the image. Wildstyle elements that are "
+                "integral parts of the letters themselves — arrows, "
+                "extensions, cross-outs, flourishes, circuit traces or "
+                "chrome accents — do NOT count as other text. Faint, small "
+                "or illegible background markings, weathering stains or "
+                "abstract marks that cannot be read as words or letters are "
+                "tolerated and do not fail the check. spelling_ok is false "
+                "only if there are separate additional READABLE words, "
+                "letters, tags, captions, logos or signatures besides the "
+                "ATLAS piece. "
                 "photorealistic is true "
                 "only if the image looks like a real architectural photograph "
                 "or visualization rather than a flat illustration, cartoon or "
