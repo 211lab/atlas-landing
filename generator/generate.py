@@ -50,7 +50,7 @@ WILDSTYLES = [
      "couple of glowing circuit-trace accents running inside the letterforms."),
     ("W2-neon-back-alley",
      "Chrome-tinted wildstyle in a neon-lit back-alley composition: blurred "
-     "holographic signage glows far behind the piece and reflections play "
+     "holographic light panels glow far behind the piece and reflections play "
      "across the paint, while the piece itself stays clean."),
     ("W3-half-lit-decay",
      "Half of the piece glows with healthy neon while the other half flickers "
@@ -625,8 +625,9 @@ def _gallery_slug(meta: dict) -> str:
 
 def _gallery_card(name: str, info: dict) -> str:
     """Render one gallery card: thumbnail, corrected meta, expandable prompt."""
-    when = info.get("generated_at_local")
-    if not when:
+    if info.get("generated_at_local"):
+        when = f"{info['generated_at_local']} local"
+    else:
         when = str(info.get("generated_at", ""))[:16].replace("T", " ") + " UTC"
     wx = info.get("weather") or {}
 
@@ -651,7 +652,7 @@ def _gallery_card(name: str, info: dict) -> str:
         bits.append("day" if wxval("is_day", "is_day") else "night")
     style = str(info.get("wildstyle", "")).split("-", 1)[-1].replace("-", " ")
 
-    caption = (f"{when} local · " + ", ".join(bits)
+    caption = (when + " · " + ", ".join(bits)
                + (f" · {style}" if style else ""))
     prompt_html = ""
     if info.get("prompt"):
