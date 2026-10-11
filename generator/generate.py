@@ -13,6 +13,7 @@ No third-party packages: standard library only, so the runtime image stays small
 from __future__ import annotations
 
 import base64
+import io
 import json
 import os
 import sys
@@ -20,6 +21,8 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
+
+from PIL import Image
 
 OPENROUTER_BASE = os.environ.get("OPENROUTER_BASE", "https://openrouter.ai/api/v1")
 WEATHER_URL = os.environ.get(
@@ -32,6 +35,8 @@ PLACE = os.environ.get("WEATHER_PLACE", "<configured-place>")
 
 IMAGE_MODEL = os.environ.get("IMAGE_MODEL", "google/gemini-2.5-flash-image")
 VISION_MODEL = os.environ.get("VISION_MODEL", "google/gemini-2.5-flash")
+# The artwork is panoramic; 21:9 avoids the letterbox bars a 16:9 canvas gets.
+ASPECT_RATIO = os.environ.get("ASPECT_RATIO", "21:9")
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 IMAGE_PATH = os.path.join(DATA_DIR, "background.jpg")
@@ -326,8 +331,8 @@ def build_prompt(w: dict) -> str:
         f"{weather}. "
         f"LIGHTING AND ATMOSPHERE: {light} "
         "COMPOSITION AND ART DIRECTION: extreme panoramic landscape "
-        "composition that fills the entire 16:9 frame edge to edge, with no "
-        "letterboxing, no black bars, no borders and no vignette. The word "
+        "composition that fills the entire ultra-wide frame edge to edge, with "
+        "no letterboxing, no black bars, no borders and no vignette. The word "
         "ATLAS dominates the central 80 percent of the frame, the five letters "
         "forming one continuous horizontal architectural silhouette, "
         "horizontally centred with generous breathing room at both ends and "
@@ -351,12 +356,38 @@ def build_prompt(w: dict) -> str:
     )
 
 
+def refine_image(raw: bytes) -> bytes:
+    """Strip uniform letterbox bars and return the artwork as a real JPEG."""
+    img = Image.open(io.BytesIO(raw)).convert("RGB")
+    width, height = img.size
+    gray = img.convert("L")
+    limit_top, limit_bottom = int(height * 0.15), int(height * 0.85)
+
+    def dark(y: int) -> bool:
+        return gray.crop((0, y, width, y + 1)).getextrema()[1] < 16
+
+    top = 0
+    while top < limit_top and dark(top):
+        top += 1
+    bottom = height - 1
+    while bottom > limit_bottom and dark(bottom):
+        bottom -= 1
+    if top or bottom < height - 1:
+        img = img.crop((0, top, width, bottom + 1))
+
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=90)
+    log(f"refined image {width}x{height} -> {img.size[0]}x{img.size[1]} "
+        f"(bars removed: {top + (height - 1 - bottom)})")
+    return buf.getvalue()
+
+
 def generate_image(prompt: str) -> tuple[bytes, dict]:
     payload = {
         "model": IMAGE_MODEL,
         "prompt": prompt,
         "n": 1,
-        "aspect_ratio": "16:9",
+        "aspect_ratio": ASPECT_RATIO,
     }
     resp = http_json(f"{OPENROUTER_BASE}/images", payload,
                      headers={"Authorization": f"Bearer {API_KEY}"})
@@ -364,7 +395,7 @@ def generate_image(prompt: str) -> tuple[bytes, dict]:
     if not items or "b64_json" not in items[0]:
         raise RuntimeError(f"image response missing data: {json.dumps(resp)[:300]}")
     raw = base64.b64decode(items[0]["b64_json"])
-    return raw, (resp.get("usage") or {})
+    return refine_image(raw), (resp.get("usage") or {})
 
 
 def verify_image(image_bytes: bytes, w: dict) -> dict:
