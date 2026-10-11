@@ -128,67 +128,224 @@ def fetch_weather() -> dict:
         "is_day": bool(cur.get("is_day")),
         "code": int(cur.get("weather_code", 0) or 0),
         "observed_at": cur.get("time"),
+        "local_hour": int(str(cur.get("time", "")).split("T")[-1].split(":")[0] or 0),
+        "cloud_cover": cur.get("cloud_cover"),
+        "precipitation_mm": cur.get("precipitation"),
+        "humidity": cur.get("relative_humidity_2m"),
         "place": PLACE,
     }
 
 
-def scene_guidance(w: dict) -> str:
+def time_of_day(w: dict) -> str:
+    """Phase of the local day, from the Open-Meteo local timestamp."""
+    h = w.get("local_hour", 12)
+    if h < 5:
+        return "deep night"
+    if h < 7:
+        return "pre-dawn twilight"
+    if h < 11:
+        return "early morning"
+    if h < 13:
+        return "midday"
+    if h < 17:
+        return "afternoon"
+    if h < 19:
+        return "golden hour"
+    if h < 21:
+        return "dusk"
+    return "night"
+
+
+def weather_elements(w: dict) -> str:
+    """Weather detail woven into the scene: sky, wind, precipitation, wetness."""
     code = w["code"]
-    day = w["is_day"]
+    phase = time_of_day(w)
+    cloud = w.get("cloud_cover")
+    wind = w.get("wind_kmh") or 0
+    precip = w.get("precipitation_mm") or 0
+    humidity = w.get("humidity")
+
+    if wind < 8:
+        wind_txt = "still air"
+    elif wind < 20:
+        wind_txt = "a light wind moving the mist"
+    elif wind < 40:
+        wind_txt = "blustery winds funnelling between the structures"
+    else:
+        wind_txt = "gale-force winds whipping debris past the letters"
+
+    cloud_txt = "overcast" if (cloud is None or cloud >= 85) else (
+        "broken cloud" if cloud >= 50 else
+        "scattered cloud" if cloud >= 20 else "clear sky")
+
     if code in (95, 96, 99):
-        light = "daytime" if day else "night"
-        return (f"a dramatic {light} thunderstorm; dark towering clouds, "
-                "sheets of rain, occasional lightning")
-    if code in (71, 73, 75, 77, 85, 86):
-        light = "daytime" if day else "night"
-        return (f"a cold {light} snow scene; falling snow, snow collected on "
-                "ledges and ground, overcast pale sky")
-    if code in (51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82):
-        light = "daytime" if day else "night"
-        wet = "heavy rain" if code in (65, 67, 82) else "rain"
-        return (f"a {light} rain scene; {wet} falling, wet reflective surfaces, "
-                "puddles, damp sheen on the wall")
-    if code in (45, 48):
-        light = "daytime" if day else "night"
-        return (f"a misty {light} scene; dense fog softening the background, "
-                "low visibility, cool grey light")
-    if code == 3:
-        light = "daytime" if day else "night"
-        return (f"a flat overcast {light}; heavy grey cloud, soft diffuse "
-                "light, no direct sun")
-    if code == 2:
-        light = "daytime" if day else "night"
-        return (f"a partly cloudy {light}; broken clouds with patches of sky, "
-                "dappled light")
-    if code in (0, 1):
-        return ("a bright clear-sky scene; strong sunlight, crisp shadows, "
-                "vivid blue sky" if day else
-                "a clear night; deep blue-black sky, stars, cool moonlight")
+        sky = "a towering storm front; sheets of rain and occasional lightning"
+    elif code in (71, 73, 75, 77, 85, 86):
+        sky = "falling snow settling on every horizontal surface"
+    elif code in (51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82):
+        heavy = "heavy rain" if code in (65, 67, 82) else "light rain"
+        sky = f"{heavy}, rain-slicked reflective concrete and puddles"
+    elif code in (45, 48):
+        sky = "dense fog softening the far towers into silhouettes"
+    else:
+        sky = f"{cloud_txt}"
+
+    parts = [
+        f"It is {phase} in {PLACE}",
+        f"the sky shows {sky}",
+        f"around {w.get('temperature_c')}°C",
+        f"with {wind_txt}",
+    ]
+    if precip:
+        parts.append(f"recent precipitation {precip} mm/h")
+    if humidity:
+        parts.append(f"humidity {humidity}%")
+    return ", ".join(str(p) for p in parts)
+
+
+def lighting(w: dict) -> str:
+    """Lighting and atmosphere, adapted to the current weather and time of day."""
+    code = w["code"]
+    phase = time_of_day(w)
+    night = not w["is_day"] or phase in ("deep night", "night", "dusk")
+    base = (
+        "Gigantic architectural shadows stretch across the concrete landscape. "
+        "Soft volumetric light penetrates deep structural voids and catches "
+        "selected edges of the lettering. Subtle atmospheric haze, fine "
+        "airborne dust and realistic depth-based contrast reduction emphasise "
+        "the extraordinary size of the structures. High dynamic range, rich "
+        "blacks, luminous concrete highlights and physically accurate global "
+        "illumination."
+    )
+    if night:
+        light = ("At night the megacity is lit by cold moonlight and sodium "
+                 "floodlighting; lit windows dot the towers, and the wet "
+                 "concrete mirrors the glow.")
+    elif code in (95, 96, 99):
+        light = ("Dramatic storm light with powerful shafts breaking through "
+                 "dense cloud; distant lightning silhouettes the letters.")
+    elif code in (51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82):
+        light = ("Diffuse grey storm light; rain-slicked concrete reflects the "
+                 "sky, water sheets down the letterforms and mist rises off "
+                 "the surfaces.")
+    elif code in (71, 73, 75, 77, 85, 86):
+        light = ("Soft snow-diffused light; fresh snow dusts the horizontal "
+                 "ledges and mutes every reflection.")
+    elif code in (45, 48):
+        light = ("Fog-diffused light with glowing halos around the floodlights; "
+                 "distant structures fade into haze.")
+    elif code == 3:
+        light = ("Flat overcast diffusion with no hard shadows; the heavy cloud "
+                 "casts a uniform cinematic grey light.")
+    elif phase == "golden hour":
+        light = ("Low golden sunlight rakes across the concrete at a shallow "
+                 "angle, igniting the edges of the letters and throwing "
+                 "kilometre-long shadows.")
+    elif phase in ("pre-dawn twilight", "dusk"):
+        light = ("Twilight grading from deep blue to a faint warm horizon "
+                 "glow; the letters are caught between day and night light.")
+    else:
+        light = ("Dramatic directional sunlight breaks through atmospheric "
+                 "cloud, raking across the concrete faces.")
+    return f"{light} {base}"
 
 
 def build_prompt(w: dict) -> str:
-    sky = scene_guidance(w) or "an overcast day"
-    temp = w.get("temperature_c")
-    temp_txt = f"{temp:.0f}°C" if isinstance(temp, (int, float)) else "unknown"
+    weather = weather_elements(w)
+    light = lighting(w)
     return (
-        "A photorealistic, cinematic wide 16:9 photograph of a real urban "
-        f"scene, shot in {PLACE} during {sky}. Conditions: "
-        f"{WMO.get(w['code'], 'variable weather')}, around {temp_txt}, "
-        f"wind {w.get('wind_kmh')} km/h. "
-        "Composition is the priority: the graffiti word \"Atlas\" is the "
-        "focal point and sits exactly in the centre of the frame, horizontally "
-        "and vertically, covering no more than the middle half of the frame "
-        "width, so a centre crop to a portrait aspect ratio still contains the "
-        "entire word with breathing room. The rest of the scene extends "
-        "symmetrically to both edges, so nothing important is lost when the "
-        "sides are cropped on a phone. Show a textured wall or structure where "
-        "the word \"Atlas\" is painted as large, bold graffiti, integrated "
-        "into the scene and lit naturally by the weather. "
-        "The word \"Atlas\" must be spelled exactly A-t-l-a-s, and it must be "
-        "the only text or lettering anywhere in the image. "
-        "Gritty, wet-street realism; shallow depth of field; 35mm photograph, "
-        "natural colour grading, high detail. No people. No other graffiti, "
-        "tags, signatures, posters, signs, watermarks, logos, captions or UI."
+        "Create an extraordinary, ultra-wide cinematic typographic artwork "
+        "featuring the exact word \"ATLAS\" in an intensely stylized, "
+        "experimental graffiti letterography style, fused with colossal "
+        "brutalist architecture, monumental sculptural typography and an "
+        "overwhelming sense of architectural scale. "
+        "CORE CONCEPT: the word \"ATLAS\" is not simply written on a surface; "
+        "the letters themselves are immense architectural megastructures, "
+        "towering like ancient concrete monuments, futuristic brutalist "
+        "skyscrapers and impossible urban sculptures. Each letter is "
+        "constructed from massive interlocking slabs of raw concrete, angular "
+        "geometric volumes, cantilevered structures, deep architectural "
+        "recesses, exposed structural beams and intricately connected "
+        "three-dimensional graffiti forms. The five letters form one unified, "
+        "incredibly wide, visually commanding composition stretching "
+        "horizontally across an immense architectural landscape, and the word "
+        "must read clearly as ATLAS while retaining the sophisticated "
+        "complexity of experimental graffiti lettering. "
+        "TYPOGRAPHY AND LETTEROGRAPHY: an extremely advanced fusion of "
+        "wildstyle graffiti, architectural lettering, abstract calligraphic "
+        "geometry, experimental typographic sculpture and brutalist graphic "
+        "design. Exceptionally wide, heavily extended proportions with "
+        "monumental horizontal presence; aggressive angular extensions, "
+        "dramatic overlapping strokes, geometric interlocking shapes and "
+        "unconventional negative spaces; massive extruded three-dimensional "
+        "letter structures with extraordinary architectural depth; intricate "
+        "graffiti-inspired connections between the letters forming one "
+        "continuous sculptural installation; razor-sharp edges contrasting "
+        "with enormous rounded concrete surfaces and sweeping structural "
+        "curves; dynamic variations in stroke thickness, complex internal "
+        "cutouts, recessed channels and deep shadow-filled voids; subtle "
+        "hand-designed graffiti imperfections; strong visual rhythm, "
+        "purposeful asymmetry, architectural tension and a distinctive custom "
+        "lettering identity, as if designed by an experimental graffiti master "
+        "collaborating with a visionary brutalist architect. "
+        "BRUTALIST ARCHITECTURAL ENVIRONMENT: place the enormous ATLAS letter "
+        "sculpture within an expansive brutalist architectural complex of "
+        "colossal concrete towers, monolithic retaining walls, impossible "
+        "cantilevered platforms, massive staircases, monumental pillars, "
+        "elevated pedestrian bridges, deeply recessed openings and vast "
+        "geometric planes, inspired by Soviet-era megastructures, Japanese "
+        "Metabolist architecture, experimental concrete monuments and "
+        "speculative architectural photography. The architecture should feel "
+        "ancient, futuristic, intimidating and strangely sacred, and the "
+        "letters appear to be load-bearing structures rather than decorative "
+        "objects. "
+        "IMMENSE SCALE AND PERSPECTIVE: an almost incomprehensible sense of "
+        "size; the ATLAS sculpture appears hundreds of metres tall and "
+        "kilometres wide, dwarfing every surrounding structure, with several "
+        "extremely tiny human silhouettes standing near the base of the "
+        "letters and miniature staircases, distant walkways and small doorways "
+        "for scale. Use an ultra-wide, low-angle cinematic perspective with a "
+        "20mm architectural lens, the viewer near ground level looking "
+        "slightly upward, with dramatic vanishing points, extraordinary depth, "
+        "overwhelming vertical mass and an immense panoramic horizontal "
+        "composition, like an entire city built in the shape of a word. "
+        "MATERIALS AND TEXTURES: predominantly raw, weathered, board-formed "
+        "concrete with highly realistic surface imperfections including "
+        "concrete grain, construction seams, exposed aggregate, erosion, dark "
+        "water stains, mineral deposits, chipped edges and fine architectural "
+        "weathering, plus occasional oxidized steel inserts and dark metallic "
+        "structural joints, so that every letter feels physically constructed "
+        "and impossibly heavy. "
+        "COLOR PALETTE: restrained and cinematic, charcoal black, graphite "
+        "grey, cold concrete silver, desaturated slate, deep shadow tones and "
+        "muted industrial ivory, with subtle accents of oxidized orange or "
+        "faded safety red in selected recesses; avoid excessive saturation and "
+        "let the impact come from sculptural form, monumental scale, material "
+        "realism and dramatic light. "
+        f"WEATHER AND TIME OF DAY, rendered faithfully into the scene: "
+        f"{weather}. "
+        f"LIGHTING AND ATMOSPHERE: {light} "
+        "COMPOSITION AND ART DIRECTION: extreme panoramic landscape "
+        "composition in a wide 16:9 frame. The word ATLAS dominates the "
+        "central 80 percent of the frame, the five letters forming one "
+        "continuous horizontal architectural silhouette, horizontally centred "
+        "with generous breathing room at both ends and dramatic open sky "
+        "above. Balance typographic readability with dense architectural "
+        "complexity, with strong visual hierarchy, extraordinary negative "
+        "space and intentional geometric relationships; every architectural "
+        "detail reinforces the overall letterforms. "
+        "RENDERING AND FINISH: photorealistic architectural visualization "
+        "combined with high-end experimental typography, cinematic "
+        "environmental concept art, ultra-detailed material rendering, "
+        "physically based lighting, realistic atmospheric perspective, "
+        "impeccable geometry and sophisticated editorial art direction, "
+        "architecturally plausible yet conceptually impossible, powerful, "
+        "immersive and unmistakably original. "
+        "CRITICAL REQUIREMENTS: the image must contain exactly five letters "
+        "spelling ATLAS, in the correct order A, T, L, A, S, in uppercase, and "
+        "all five letters must remain recognizable despite the elaborate "
+        "graffiti construction. No additional words, no captions, no logos, no "
+        "watermarks, no decorative borders and no other text of any kind."
     )
 
 
@@ -210,6 +367,8 @@ def generate_image(prompt: str) -> tuple[bytes, dict]:
 
 def verify_image(image_bytes: bytes, w: dict) -> dict:
     b64 = base64.b64encode(image_bytes).decode()
+    phase = time_of_day(w)
+    cond = WMO.get(w["code"], "variable weather")
     content = [
         {
             "type": "text",
@@ -218,18 +377,18 @@ def verify_image(image_bytes: bytes, w: dict) -> dict:
                 "and reply with ONLY a JSON object with boolean keys "
                 "\"spelling_ok\", \"photorealistic\", \"matches_weather\", "
                 "\"centered_ok\", and a short string \"notes\". spelling_ok is "
-                "true only if the word \"Atlas\" appears exactly once, spelled "
-                "A-t-l-a-s, and no other text or lettering appears. "
-                "photorealistic is true only if the image looks like a real "
-                "photograph rather than an illustration, 3D render or painting. "
-                "matches_weather is true only if the scene is consistent with: "
-                f"{WMO.get(w['code'], 'variable weather')}, temperature "
-                f"{w.get('temperature_c')}°C, "
-                f"{'daytime' if w['is_day'] else 'night'}. centered_ok is true "
-                "only if the word \"Atlas\" sits in the horizontal centre of "
-                "the frame, spans no more than roughly the middle half of the "
-                "frame width, and would survive a centre crop to portrait "
-                "aspect without cutting the word. "
+                "true only if the uppercase word \"ATLAS\" appears exactly "
+                "once, spelled A-T-L-A-S in that order, and no other text, "
+                "lettering, captions or logos appear. photorealistic is true "
+                "only if the image looks like a real architectural photograph "
+                "or visualization rather than a flat illustration, cartoon or "
+                "painting. matches_weather is true only if the scene, weather "
+                f"effects and lighting are consistent with: {cond}, temperature "
+                f"{w.get('temperature_c')}°C, {phase}. centered_ok is true "
+                "only if the complete five-letter word ATLAS is horizontally "
+                "centred, fully visible with clear breathing room at both "
+                "sides, no letter cut off by the frame edge, and open space "
+                "above it. "
                 "Do not add any prose outside the JSON."
             ),
         },
