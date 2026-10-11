@@ -65,6 +65,57 @@ WILDSTYLES = [
 def pick_wildstyle() -> tuple[str, str]:
     return random.choice(WILDSTYLES)
 
+
+# Camera and framing facets, drawn independently for every generation so the
+# artwork is photographed differently each time while remaining physically
+# plausible. All combinations are meant to be compatible.
+CAMERA_HEIGHT = [
+    "at ground level right at the base of the artwork",
+    "at a low tripod position a short distance away",
+    "at standing eye height across the plaza",
+    "at an elevated vantage such as a walkway or balcony above",
+    "well back near the far edge of the complex",
+]
+CAMERA_PITCH = [
+    "pitched sharply upward so the artwork towers overhead",
+    "pitched slightly upward with mild perspective convergence",
+    "held level with no upward pitch",
+    "pitched slightly downward to include more of the setting",
+]
+CAMERA_FRAMING = [
+    "frontal and near-symmetrical with the artwork filling the centre",
+    "as a three-quarter view revealing the depth of the surface",
+    "off-axis with the artwork seen at an oblique slant",
+    "as a diagonal composition with the artwork crossing the frame",
+]
+CAMERA_ROLL = [
+    "with a subtle Dutch-angle roll",
+    "with a pronounced Dutch-angle roll",
+    "with no roll and true verticals",
+]
+CAMERA_FOCUS = [
+    "with shallow depth of field isolating the artwork",
+    "with deep focus keeping artwork and architecture sharp",
+    "with mild long-lens compression",
+]
+
+
+def pick_camera() -> tuple[dict, str]:
+    """Return the chosen camera facets and the prompt fragment describing them."""
+    facets = {
+        "height": random.choice(CAMERA_HEIGHT),
+        "pitch": random.choice(CAMERA_PITCH),
+        "framing": random.choice(CAMERA_FRAMING),
+        "roll": random.choice(CAMERA_ROLL),
+        "focus": random.choice(CAMERA_FOCUS),
+    }
+    fragment = (
+        "CAMERA AND FRAMING: the camera is positioned "
+        f"{facets['height']}, {facets['pitch']}, {facets['framing']}, "
+        f"{facets['roll']}, {facets['focus']}."
+    )
+    return facets, fragment
+
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 IMAGE_PATH = os.path.join(DATA_DIR, "background.jpg")
 META_PATH = os.path.join(DATA_DIR, "weather.json")
@@ -282,7 +333,7 @@ def lighting(w: dict) -> str:
     return f"{light} {base}"
 
 
-def build_prompt(w: dict, style_txt: str) -> str:
+def build_prompt(w: dict, style_txt: str, camera_txt: str) -> str:
     weather = weather_elements(w)
     light = lighting(w)
     return (
@@ -358,6 +409,8 @@ def build_prompt(w: dict, style_txt: str) -> str:
         "lens distortion and unnatural deformation of the graffiti. "
         "The artwork must retain its recognizable letterforms regardless "
         "of the camera position or viewing angle. "
+
+        f"{camera_txt} "
 
         "MATERIALS AND TEXTURES: highly realistic physical surfaces "
         "appropriate to the selected graffiti-bearing structure, including "
@@ -658,7 +711,11 @@ def main() -> int:
 
     style_id, style_txt = pick_wildstyle()
     log(f"wildstyle treatment: {style_id}")
-    prompt = build_prompt(weather, style_txt)
+    camera_facets, camera_txt = pick_camera()
+    log(f"camera: {camera_facets['height']}, {camera_facets['pitch']}, "
+        f"{camera_facets['framing']}, {camera_facets['roll']}, "
+        f"{camera_facets['focus']}")
+    prompt = build_prompt(weather, style_txt, camera_txt)
     log(f"generating image with {IMAGE_MODEL}")
     image, usage = generate_image(prompt)
     log(f"generated {len(image)} bytes (cost={usage.get('cost')})")
@@ -680,6 +737,7 @@ def main() -> int:
         "temperature_c": weather["temperature_c"],
         "is_day": weather["is_day"],
         "wildstyle": style_id,
+        "camera": camera_facets,
         "image_model": IMAGE_MODEL,
         "vision_model": VISION_MODEL,
         "place": PLACE,
