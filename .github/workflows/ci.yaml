@@ -26,6 +26,6 @@ jobs:
           python -m py_compile generator/generate.py
           python -m unittest discover -s tests
       - name: Scan for secrets
-        uses: gitleaks/gitleaks-action@v2
+        run: docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:v8.30.1 git --config .gitleaks.toml --redact
       - name: Build container
         run: docker build -t atlas-background:test .
