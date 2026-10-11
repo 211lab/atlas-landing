@@ -16,6 +16,7 @@ import base64
 import io
 import json
 import os
+import random
 import sys
 import time
 import urllib.error
@@ -37,6 +38,31 @@ IMAGE_MODEL = os.environ.get("IMAGE_MODEL", "google/gemini-2.5-flash-image")
 VISION_MODEL = os.environ.get("VISION_MODEL", "google/gemini-2.5-flash")
 # The artwork is panoramic; 21:9 avoids the letterbox bars a 16:9 canvas gets.
 ASPECT_RATIO = os.environ.get("ASPECT_RATIO", "21:9")
+
+# Wildstyle treatments, chosen at random for every generation. Weather talk in
+# these fragments is intentionally absent: the scene weather comes from the
+# live Open-Meteo conditions.
+WILDSTYLES = [
+    ("W1-barely-technical",
+     "The wall is a clean neon/UV-lit surface and the only future-tech is a "
+     "couple of glowing circuit-trace accents running inside the letterforms."),
+    ("W2-neon-back-alley",
+     "Chrome-tinted wildstyle in a neon-lit back-alley composition: blurred "
+     "holographic signage glows far behind the piece and reflections play "
+     "across the paint, while the piece itself stays clean."),
+    ("W3-half-lit-decay",
+     "Half of the piece glows with healthy neon while the other half flickers "
+     "or is burnt out; the surrounding mega-city wall carries peeling posters, "
+     "dangling cables and steam vents."),
+    ("W4-post-apocalyptic",
+     "The neon is weathered, scratched and scorched, fighting to stay lit on "
+     "a ruined wall of cracked concrete, exposed rebar and dead billboard "
+     "fragments, with drifting ash and a single working drone light."),
+]
+
+
+def pick_wildstyle() -> tuple[str, str]:
+    return random.choice(WILDSTYLES)
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 IMAGE_PATH = os.path.join(DATA_DIR, "background.jpg")
@@ -255,12 +281,12 @@ def lighting(w: dict) -> str:
     return f"{light} {base}"
 
 
-def build_prompt(w: dict) -> str:
+def build_prompt(w: dict, style_txt: str) -> str:
     weather = weather_elements(w)
     light = lighting(w)
     return (
         "Create an extraordinary, ultra-wide cinematic photograph whose main "
-        "subject is a monumental piece of wide-style graffiti spelling exactly "
+        "subject is a monumental piece of wildstyle graffiti spelling exactly "
         "the word \"ATLAS\", painted across an immense raw-concrete wall inside "
         "a brutalist architectural complex. The graffiti is the hero of the "
         "image; the brutalist architecture is its setting and canvas, never "
@@ -270,16 +296,16 @@ def build_prompt(w: dict) -> str:
         "a single continuous horizontal piece. The letters are painted, not "
         "built: bold spray-paint letterforms on the concrete, absolutely not "
         "buildings, megastructures or architecture-shaped letters. "
-        "TYPOGRAPHY AND LETTEROGRAPHY (wide-style graffiti): exceptionally "
-        "wide, heavily extended letterforms with monumental horizontal "
-        "presence; a wildstyle-informed but clearly legible custom alphabet "
-        "that unmistakably reads ATLAS; fat confident fills with crisp "
-        "cut-backs, thick dark outlines, hard painted 3D block shadows, "
-        "highlights and sheen, geometric interlocking connections between the "
-        "letters, controlled drips and overspray, subtle hand-painted "
-        "imperfections, dynamic stroke-weight variation and purposeful "
-        "asymmetry, as if by a world-class graffiti writer. The lettering must "
+        "TYPOGRAPHY AND LETTEROGRAPHY (wildstyle graffiti): full wildstyle "
+        "construction with interlocking letters, aggressive arrows and "
+        "extensions, overlapping bars, sharp angular cuts and folds, kinetic "
+        "highlights and hard painted 3D block shadows; an authentic, complex "
+        "piece by a world-class graffiti writer in which every letter remains "
+        "identifiable and the word unmistakably reads ATLAS; monumental "
+        "horizontal presence, controlled drips and overspray, purposeful "
+        "asymmetry and subtle hand-painted imperfections. The lettering must "
         "look applied to the wall with paint and markers, not constructed. "
+        f"STYLE TREATMENT: {style_txt} "
         "BRUTALIST SETTING: place the mural within an expansive brutalist "
         "architectural complex of colossal raw-concrete towers, monolithic "
         "retaining walls, vast brutalist plazas, cantilevered platforms, "
@@ -328,7 +354,7 @@ def build_prompt(w: dict) -> str:
         "CRITICAL REQUIREMENTS: the image must contain exactly five letters "
         "spelling ATLAS, in the correct order A, T, L, A, S, in uppercase, and "
         "all five letters must remain clearly recognizable. The lettering is "
-        "wide-style graffiti paint, NOT architecture: do not turn the letters "
+        "wildstyle graffiti paint, NOT architecture: do not turn the letters "
         "into buildings, towers or megastructures. No additional words, no "
         "captions, no logos, no watermarks, no decorative borders, no black "
         "bars, no letterboxing and no other text of any kind. The artwork fills "
@@ -450,7 +476,9 @@ def main() -> int:
     log(f"conditions: {WMO.get(weather['code'], 'n/a')}, "
         f"{weather['temperature_c']}°C, day={weather['is_day']}")
 
-    prompt = build_prompt(weather)
+    style_id, style_txt = pick_wildstyle()
+    log(f"wildstyle treatment: {style_id}")
+    prompt = build_prompt(weather, style_txt)
     log(f"generating image with {IMAGE_MODEL}")
     image, usage = generate_image(prompt)
     log(f"generated {len(image)} bytes (cost={usage.get('cost')})")
@@ -471,6 +499,7 @@ def main() -> int:
         "label": WMO.get(weather["code"], "weather"),
         "temperature_c": weather["temperature_c"],
         "is_day": weather["is_day"],
+        "wildstyle": style_id,
         "image_model": IMAGE_MODEL,
         "vision_model": VISION_MODEL,
         "place": PLACE,
