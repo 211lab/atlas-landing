@@ -18,3 +18,7 @@ The `.gitea/workflows/build.yaml` workflow builds and pushes an image and, for v
 - `REGISTRY_USER` and `REGISTRY_TOKEN`: credentials allowed to push the image and update the GitOps repository.
 
 The GitHub workflow performs validation only and does not need these deployment secrets.
+
+## Public mirror history
+
+The public GitHub history is privacy-filtered from the deployment source, so commit IDs intentionally differ. Never force-push the raw deployment repository or its tags directly to GitHub; that would restore private configuration from older commits. Publish updates only from a full-history export processed with the maintainer-held redaction rules, then scan all branches and tags before pushing.
