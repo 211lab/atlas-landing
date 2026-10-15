@@ -77,26 +77,32 @@ class GeneratorConfigurationTests(unittest.TestCase):
             generate.WEATHER_LABEL = old_label
             generate.PLACE = old_place
 
-    def test_gallery_prompt_is_escaped_and_weather_is_fahrenheit(self):
+    def test_gallery_caption_is_compact_and_prompt_is_not_rendered(self):
         card = generate._gallery_card("image.jpg", {
             "generated_at_local": "2026-01-01 12:00",
             "wildstyle": "W1-example",
             "prompt": "<script>alert('x')</script>",
+            "image_model": "image/model", "vision_model": "vision/model",
             "weather": {"label": "clear", "temperature_c": 20,
-                        "wind_kmh": 10, "is_day": True},
+                        "wind_kmh": 10, "cloud_cover": 25,
+                        "precipitation_mm": 1.2, "is_day": True},
         })
-        self.assertIn("68°F", card)
-        self.assertNotIn("20°C", card)
-        self.assertIn(html.escape("<script>alert('x')</script>"), card)
-        self.assertIn("<details>", card)
+        self.assertIn("2026-01-01 12:00 · clear, 68°F, wind 6 mph, clouds 25%, precip 1.2 mm/h · model: image/model", card)
+        self.assertNotIn("vision", card)
+        self.assertNotIn("wildstyle", card)
+        self.assertNotIn(" local", card)
+        self.assertNotIn(" UTC", card)
+        self.assertNotIn("alert", card)
+        self.assertEqual(card.count("<details>"), 1)
+        self.assertIn("<summary>Visual recipe</summary>", card)
 
     def test_gallery_card_shows_escaped_model_ids_and_omits_legacy_fields(self):
         card = generate._gallery_card("image.jpg", {
             "image_model": "image/<model>",
             "vision_model": 'vision/"model',
         })
-        self.assertIn("image model: image/&lt;model&gt;", card)
-        self.assertIn("vision model: vision/&quot;model", card)
+        self.assertIn("model: image/&lt;model&gt;", card)
+        self.assertNotIn("vision", card)
 
         legacy_card = generate._gallery_card("legacy.jpg", {})
         self.assertNotIn("image model:", legacy_card)
@@ -138,6 +144,10 @@ class GeneratorConfigurationTests(unittest.TestCase):
             self.assertIn('<img loading="lazy" src="thumbs/20260103-z-new.jpg"', page)
             self.assertIn('target="_blank" rel="noopener noreferrer"', page)
             self.assertTrue(os.path.exists(os.path.join(gallery, "catalog.html")))
+            self.assertIn('href="https://git.atlas.lan/atlas-admin/atlas-landing/actions"', page)
+            self.assertIn('target="_blank" rel="noopener noreferrer"', page)
+            self.assertIn('title="Sign in and run the generate-background workflow"', page)
+            self.assertIn("Generate new background", page)
 
     def test_recipe_selection_and_prompt_are_complete(self):
         selected = []
@@ -166,8 +176,8 @@ class GeneratorConfigurationTests(unittest.TestCase):
         self.assertIn("catalog.html#palette-rainbow", card)
         self.assertNotIn("<script>", card)
         legacy_card = generate._gallery_card("legacy.jpg", {"wildstyle": "W1-legacy"})
-        self.assertIn("legacy", legacy_card)
-        self.assertIn("Style: legacy", legacy_card)
+        self.assertNotIn("Style:", legacy_card)
+        self.assertIn("Visual recipe", legacy_card)
 
     def test_catalog_descriptions_are_detailed_and_rendered_with_chip_targets(self):
         for facet in generate.CATALOGS:
