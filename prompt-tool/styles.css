@@ -55,7 +55,7 @@ h2 {
 }
 
 section {
-  margin: 2.5rem 0;
+  margin: 3rem 0;
 }
 
 button {
@@ -90,22 +90,42 @@ button:disabled {
   gap: 1rem;
 }
 
-.catalog fieldset {
-  min-width: 0;
+.facet {
   border: 1px solid var(--line);
   border-radius: .6rem;
-  padding: 1rem;
+  overflow: hidden;
   background: var(--panel);
 }
 
-legend {
+.facet summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
   font-weight: 750;
-  padding: 0 .35rem;
   color: var(--accent);
+  cursor: pointer;
+}
+
+.facet summary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.facet-count {
+  color: var(--muted);
+  font-size: .9rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.facet-options {
+  padding: 0 1.2rem 1rem;
 }
 
 .option {
-  padding: .7rem 0;
+  padding: 1rem 0;
   border-top: 1px solid var(--line);
 }
 
@@ -186,6 +206,10 @@ textarea {
   .section-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .facet summary {
+    align-items: flex-start;
   }
 
   .actions {
