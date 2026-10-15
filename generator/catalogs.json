@@ -1,0 +1,180 @@
+[
+  {
+    "id": "style",
+    "label": "Graffiti style",
+    "entries": [
+      {
+        "id": "wildstyle",
+        "label": "Wildstyle",
+        "description": "Build ATLAS from intricate, interlocking angular letter skeletons with energetic extensions, overlapping bars, sharp cuts and carefully controlled highlights. Give the paint layered depth, hand-worked edges and lively movement, while keeping each of the five primary letter shapes individually recognizable at a glance. Keep every flourish attached to or clearly subordinate to its letter; never let complexity change the exact spelling."
+      },
+      {
+        "id": "block",
+        "label": "Bold block",
+        "description": "Use broad, substantial block-letter forms with clean outer edges, steady stroke weight and deliberate, generous spacing between all five letters. Show opaque hand-painted fills, subtle dimensional shading at the edges and slight surface texture rather than slick digital typography. Keep the silhouettes distinct and the complete word ATLAS immediately readable without relying on surrounding context."
+      },
+      {
+        "id": "organic",
+        "label": "Organic flow",
+        "description": "Shape the letters with rounded, fluid contours, sweeping connections and expressive changes in stroke weight that suggest confident movement by a skilled hand. Let the painted edges retain small natural variations and soft overlaps, with highlights following the curves instead of creating rigid geometric bars. Preserve a clear skeleton for each letter, so the flowing treatment still reads exactly ATLAS."
+      }
+    ]
+  },
+  {
+    "id": "placement",
+    "label": "Placement",
+    "entries": [
+      {
+        "id": "wall",
+        "label": "Monumental wall",
+        "description": "Place the entire artwork on one broad, continuous architectural wall large enough to hold the complete word without wrapping around a corner. Show believable wall material, construction joints, weathering and a surface plane that recedes naturally in the chosen view. The pigment must visibly follow and adhere to that plane, with no floating letters or paint extending onto unrelated structures."
+      },
+      {
+        "id": "sign",
+        "label": "Freestanding sign",
+        "description": "Mount the complete painted artwork on a large freestanding urban sign with a credible sign face, visible structural supports and convincing attachment details. Make the sign's thickness, scale and weather exposure readable, and ensure it stands securely within the environment rather than appearing suspended without support. Keep the painted letters confined to the sign face and fully visible."
+      },
+      {
+        "id": "panel",
+        "label": "Elevated panel",
+        "description": "Put the artwork on a substantial elevated panel that is visibly integrated into the site through credible brackets, beams or structural supports. Communicate the panel's material, thickness and height with realistic perspective and contact shadows, while leaving enough clear face for all five letters. Paint must conform to the panel surface and must not become part of the surrounding architecture."
+      }
+    ]
+  },
+  {
+    "id": "lens",
+    "label": "Lens",
+    "entries": [
+      {
+        "id": "normal",
+        "label": "Natural lens",
+        "description": "Photograph with a natural 40mm full-frame-equivalent rectilinear lens, giving the subject familiar proportions and a calm, documentary perspective. Preserve straight architectural lines and realistic relative scale, with neither conspicuous foreshortening nor exaggerated background compression. Keep the whole word sharp enough to read."
+      },
+      {
+        "id": "wide",
+        "label": "Moderate wide",
+        "description": "Use a moderate 28mm full-frame-equivalent rectilinear lens to include useful environmental context and a sense of spatial depth. Keep nearby and distant elements proportionate, with straight lines remaining straight and no fisheye curvature, stretched corners or distorted lettering. The complete artwork must remain legible across the frame."
+      },
+      {
+        "id": "telephoto",
+        "label": "Compressed view",
+        "description": "Photograph from farther away with a 70mm full-frame-equivalent rectilinear lens, gently compressing the apparent distance between architectural layers. Retain natural perspective and undistorted letter shapes while allowing the setting to form a clean backdrop. Frame the entire word clearly rather than cropping it through the narrower field of view."
+      }
+    ]
+  },
+  {
+    "id": "composition",
+    "label": "Composition",
+    "entries": [
+      {
+        "id": "centered",
+        "label": "Centered",
+        "description": "Place the complete artwork prominently near the center of the frame, with deliberate breathing room around its edges and a balanced distribution of visual weight. Use surrounding architecture and small scale cues to establish size without competing with the painted word. Maintain a clear silhouette and keep every letter comfortably inside the image boundaries."
+      },
+      {
+        "id": "diagonal",
+        "label": "Diagonal",
+        "description": "Arrange the viewpoint and architectural lines to create a purposeful diagonal movement through the composition, adding energy without making the artwork appear unstable. Let the diagonal support the viewer's eye through the complete word while preserving a clear reading order. Keep all essential letterforms inside the frame and visually dominant over the setting."
+      },
+      {
+        "id": "off-center",
+        "label": "Off-center",
+        "description": "Position the artwork deliberately away from the exact center and use the remaining frame for atmospheric architectural context and negative space. Balance that open area with credible forms, light and scale cues so the image feels composed rather than accidentally cropped. Keep ATLAS fully visible, prominent and easy to read."
+      }
+    ]
+  },
+  {
+    "id": "environment",
+    "label": "Environment",
+    "entries": [
+      {
+        "id": "brutalist",
+        "label": "Brutalist",
+        "description": "Set the scene among monumental raw-concrete structures with board marks, exposed aggregate, deep recesses, massive stairs and heavy structural silhouettes. Use believable joints, cantilevers and durable urban infrastructure to convey scale and weight rather than fantasy geometry. Let the architecture frame the artwork and provide atmosphere without swallowing or forming its letters."
+      },
+      {
+        "id": "industrial",
+        "label": "Industrial",
+        "description": "Set the scene in a substantial working industrial site, with steel frames, service platforms, weathered cladding, pipes or loading structures arranged with credible construction logic. Show material differences such as oxidized metal, worn paint and concrete contact surfaces, plus realistic wear where equipment is exposed to weather. Preserve a clear view of the artwork and avoid turning infrastructure into typography."
+      },
+      {
+        "id": "urban",
+        "label": "Urban plaza",
+        "description": "Set the scene in a spacious contemporary urban plaza with durable public architecture, paved ground and believable city context. Use restrained details such as seating, lighting or distant facades to suggest a real civic place without cluttering the frame with readable signs or text. Keep the painted surface physically plausible and make the artwork the clear visual focus."
+      }
+    ]
+  },
+  {
+    "id": "paint",
+    "label": "Paint and application",
+    "entries": [
+      {
+        "id": "layered-spray",
+        "label": "Layered spray",
+        "description": "Render the artwork as several genuine aerosol passes, with fine overspray halos, visible pigment grain and selective controlled drips. Let color layers overlap naturally and follow the underlying surface texture, with believable coverage, edge softness and adhesion. Avoid the uniformly smooth finish of vector graphics or digitally pasted lettering."
+      },
+      {
+        "id": "brush-marker",
+        "label": "Brush and marker",
+        "description": "Show deliberate brush-painted fills with crisp marker outlines and subtle evidence of hand-applied strokes, bristle direction and changing pressure. Make the paint sit on the surface with realistic edges and slight texture, while the marker contour remains controlled rather than mechanically perfect. Keep the fills opaque enough for strong contrast and the outlines subordinate to readable letter shapes."
+      },
+      {
+        "id": "stencil",
+        "label": "Stencil layers",
+        "description": "Build the image from carefully aligned stencil-painted layers, with clean intentional boundaries and slight aerosol texture around selected edges. Suggest real masking and successive paint applications through small registration variations and believable coverage, not a perfectly digital overlay. Keep each color layer contained within the letter design and ensure the stencil treatment does not obscure the spelling."
+      }
+    ]
+  },
+  {
+    "id": "lighting",
+    "label": "Lighting and effects",
+    "entries": [
+      {
+        "id": "daylight",
+        "label": "Directional daylight",
+        "description": "Illuminate the scene with directional natural daylight that creates coherent, physically grounded shadows across the architecture and painted surface. Use restrained atmospheric depth and realistic highlights that reveal both material texture and paint relief. Light every letter consistently with its surroundings and retain sufficient contrast for clear reading."
+      },
+      {
+        "id": "night-neon",
+        "label": "Night neon",
+        "description": "Create a believable night scene lit by practical urban fixtures and restrained neon sources, with colored spill falling naturally onto nearby concrete or metal. Show reflections only on surfaces whose finish would reflect them, and preserve dark areas and shadow detail rather than flooding the scene with glow. Keep the lettering itself visible, evenly readable and physically integrated in the available light."
+      },
+      {
+        "id": "mist",
+        "label": "Atmospheric mist",
+        "description": "Use soft directional illumination passing through a light veil of environmental mist, creating gentle depth between foreground and distant structures. Keep haze subtle around the artwork so paint texture and letter edges stay sharp, with sufficient local contrast across all five characters. Ensure highlights and shadows remain consistent with one plausible light source."
+      }
+    ]
+  },
+  {
+    "id": "palette",
+    "label": "Color palette",
+    "entries": [
+      {
+        "id": "rainbow",
+        "label": "Rainbow",
+        "description": "Distribute a vivid but controlled full rainbow progression across the painted letters, with distinct red, orange, yellow, green, blue and violet passages that transition cleanly. Keep hue boundaries and highlights readable over the letter structure instead of dissolving into a random multicolor haze. Restrict the strongest saturation to the paint and keep surrounding materials visually cohesive and restrained."
+      },
+      {
+        "id": "red",
+        "label": "Red hues",
+        "description": "Use a coherent range of crimson, scarlet, vermilion and warm red highlights across the painted letters, with darker burgundy depth where shading is needed. Separate neighboring forms through value and surface detail rather than introducing unrelated dominant colors. Keep the surrounding scene comparatively neutral so the red paint reads clearly without clipping into featureless neon."
+      },
+      {
+        "id": "blue",
+        "label": "Blue hues",
+        "description": "Use a coherent range of deep navy, cobalt, cyan and cool blue highlights across the painted letters, balancing dark saturated fills with lighter readable edges. Preserve enough contrast between adjacent shapes that their construction remains clear, and avoid turning the whole environment into a monochrome blue wash. Let concrete and metal retain believable neutral material colors."
+      },
+      {
+        "id": "mcdonalds",
+        "label": "McDonald's red and yellow",
+        "description": "Use a bold, unmistakable combination of saturated red and bright golden yellow across the painted letters, with clear separation and balanced distribution of both colors. Add darker red shading and warm yellow highlights only where they help explain paint depth and shape; keep the palette vivid but controlled. This is a color treatment only: include no McDonald's logo, arches, lettering, packaging, brand mark or other branded object."
+      },
+      {
+        "id": "earth",
+        "label": "Earth tones",
+        "description": "Use a cohesive palette of ochre, rust, warm ivory and deep brown across the painted letters, with subtle shifts between warm light and dark passages. Let pigment texture and tonal separation define the shapes rather than relying on intense saturation. Keep surrounding concrete, weathered metal and other materials naturally compatible with the muted earthy paint."
+      }
+    ]
+  }
+]

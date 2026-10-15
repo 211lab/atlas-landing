@@ -182,6 +182,26 @@ class GeneratorConfigurationTests(unittest.TestCase):
                 self.assertIn(html.escape(entry.description), page)
                 self.assertIn(f'href="catalog.html#{target}"', card)
 
+    def test_python_catalog_matches_json_schema_and_preserves_descriptions(self):
+        catalog_path = os.path.join(os.path.dirname(generate.__file__), "catalogs.json")
+        with open(catalog_path, encoding="utf-8") as catalog_file:
+            catalog_data = json.load(catalog_file)
+
+        self.assertEqual(len(catalog_data), 8)
+        self.assertEqual(sum(len(facet["entries"]) for facet in catalog_data), 26)
+        self.assertEqual(len(generate.CATALOGS), len(catalog_data))
+        for source, facet in zip(catalog_data, generate.CATALOGS):
+            self.assertEqual(set(source), {"id", "label", "entries"})
+            self.assertEqual((facet.id, facet.label), (source["id"], source["label"]))
+            self.assertEqual(len(facet.entries), len(source["entries"]))
+            for source_entry, entry in zip(source["entries"], facet.entries):
+                self.assertEqual(set(source_entry), {"id", "label", "description"})
+                self.assertEqual(
+                    (entry.id, entry.label, entry.description),
+                    (source_entry["id"], source_entry["label"], source_entry["description"]),
+                )
+                self.assertGreaterEqual(len(entry.description), 300)
+
 
 if __name__ == "__main__":
     unittest.main()
