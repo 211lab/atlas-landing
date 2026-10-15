@@ -1,25 +1,12 @@
-[
-  {
-    "id": "style",
-    "label": "Graffiti style",
-    "entries": [
-      {
-        "id": "wildstyle",
-        "label": "Wildstyle",
-        "description": "Build ATLAS from intricate, interlocking angular letter skeletons with energetic extensions, overlapping bars, sharp cuts and carefully controlled highlights. Give the paint layered depth, hand-worked edges and lively movement, while keeping each of the five primary letter shapes individually recognizable at a glance. Keep every flourish attached to or clearly subordinate to its letter; never let complexity change the exact spelling."
-      },
-      {
-        "id": "block",
-        "label": "Bold block",
-        "description": "Use broad, substantial block-letter forms with clean outer edges, steady stroke weight and deliberate, generous spacing between all five letters. Show opaque hand-painted fills, subtle dimensional shading at the edges and slight surface texture rather than slick digital typography. Keep the silhouettes distinct and the complete word ATLAS immediately readable without relying on surrounding context."
-      },
-      {
-        "id": "organic",
-        "label": "Organic flow",
-        "description": "Shape the letters with rounded, fluid contours, sweeping connections and expressive changes in stroke weight that suggest confident movement by a skilled hand. Let the painted edges retain small natural variations and soft overlaps, with highlights following the curves instead of creating rigid geometric bars. Preserve a clear skeleton for each letter, so the flowing treatment still reads exactly ATLAS."
-      }
-    ]
+{
+  "fixed": {
+    "wildstyle": {
+      "id": "wildstyle",
+      "label": "Wildstyle",
+      "description": "Build ATLAS from intricate, interlocking angular letter skeletons with energetic extensions, overlapping bars, sharp cuts and carefully controlled highlights. Give the paint layered depth, hand-worked edges and lively movement, while keeping each of the five primary letter shapes individually recognizable at a glance. Keep every flourish attached to or clearly subordinate to its letter; never let complexity change the exact spelling."
+    }
   },
+  "facets": [
   {
     "id": "placement",
     "label": "Placement",
@@ -100,7 +87,7 @@
       {
         "id": "urban",
         "label": "Urban plaza",
-        "description": "Set the scene in a spacious contemporary urban plaza with durable public architecture, paved ground and believable city context. Use restrained details such as seating, lighting or distant facades to suggest a real civic place without cluttering the frame with readable signs or text. Keep the painted surface physically plausible and make the artwork the clear visual focus."
+        "description": "Set the scene in a spacious contemporary urban plaza with durable public architecture, paved ground and believable city context. Use restrained details such as seating, paving patterns, planters or distant facades to suggest a real civic place without cluttering the frame with readable signs or text. Keep the painted surface physically plausible and make the artwork the clear visual focus."
       }
     ]
   },
@@ -122,27 +109,6 @@
         "id": "stencil",
         "label": "Stencil layers",
         "description": "Build the image from carefully aligned stencil-painted layers, with clean intentional boundaries and slight aerosol texture around selected edges. Suggest real masking and successive paint applications through small registration variations and believable coverage, not a perfectly digital overlay. Keep each color layer contained within the letter design and ensure the stencil treatment does not obscure the spelling."
-      }
-    ]
-  },
-  {
-    "id": "lighting",
-    "label": "Lighting and effects",
-    "entries": [
-      {
-        "id": "daylight",
-        "label": "Directional daylight",
-        "description": "Illuminate the scene with directional natural daylight that creates coherent, physically grounded shadows across the architecture and painted surface. Use restrained atmospheric depth and realistic highlights that reveal both material texture and paint relief. Light every letter consistently with its surroundings and retain sufficient contrast for clear reading."
-      },
-      {
-        "id": "night-neon",
-        "label": "Night neon",
-        "description": "Create a believable night scene lit by practical urban fixtures and restrained neon sources, with colored spill falling naturally onto nearby concrete or metal. Show reflections only on surfaces whose finish would reflect them, and preserve dark areas and shadow detail rather than flooding the scene with glow. Keep the lettering itself visible, evenly readable and physically integrated in the available light."
-      },
-      {
-        "id": "mist",
-        "label": "Atmospheric mist",
-        "description": "Use soft directional illumination passing through a light veil of environmental mist, creating gentle depth between foreground and distant structures. Keep haze subtle around the artwork so paint texture and letter edges stay sharp, with sufficient local contrast across all five characters. Ensure highlights and shadows remain consistent with one plausible light source."
       }
     ]
   },
@@ -176,5 +142,30 @@
         "description": "Use a cohesive palette of ochre, rust, warm ivory and deep brown across the painted letters, with subtle shifts between warm light and dark passages. Let pigment texture and tonal separation define the shapes rather than relying on intense saturation. Keep surrounding concrete, weathered metal and other materials naturally compatible with the muted earthy paint."
       }
     ]
-  }
-]
+  },
+    {
+      "id": "theme",
+      "label": "Theme",
+      "entries": [
+        {"id":"solarpunk","label":"Solarpunk","description":"Imagine a hopeful solarpunk future where neighborhood-scale solar arrays, wind towers, green roofs and carefully maintained water systems coexist with lush native planting and welcoming public architecture. Make the technology visible, useful and integrated rather than decorative: show repairable infrastructure, shared gardens and renewable power supporting everyday life. Use crafted natural materials and optimistic color palettes; let illumination and sky follow the supplied live conditions. Keep the ATLAS lettering physically painted into the scene and clearly readable."},
+        {"id":"steampunk","label":"Steampunk","description":"Create a richly constructed steampunk setting in which Victorian-era engineering has advanced through mechanical ingenuity: riveted brass housings, pressure gauges, copper pipes, geared machinery and carefully maintained steam infrastructure. Every mechanism should have plausible supports, joins and purpose, with patinated metal, soot and visible wear conveying age and use. Keep ornament subordinate to the architecture, avoid arbitrary gadget clutter, and let all illumination follow the supplied live time-and-weather context while preserving a clear view of ATLAS."},
+        {"id":"cyberpunk","label":"Cyberpunk","description":"Set the scene in a dense cyberpunk city shaped by advanced networks, surveillance hardware, modular display panels and unevenly distributed technology. Use layered cables, service access and credible high-rise construction to suggest a functioning, crowded metropolis rather than a fantasy collage. If emissive signage is visible, its brightness and any reflections must follow the supplied live time and weather; do not assume night, rain or wet pavement. Keep all signs abstract and unreadable so ATLAS remains the only legible word, with graffiti as a tangible human mark in the mediated environment."},
+        {"id":"post-apocalyptic-salvage","label":"Post-apocalyptic salvage","description":"Depict a post-apocalyptic salvage settlement assembled from recovered industrial parts after infrastructure has failed. Show carefully repurposed steel, patched cladding, dismantled machinery, hand-built supports and visible repair decisions, with rust, dust and weather exposure explaining each material's condition. The setting should feel resourceful and inhabited rather than randomly ruined: salvage has practical function and stable construction. Keep the painted ATLAS lettering intact, prominent and unmistakably attached to a real surface."},
+        {"id":"post-war-reconstruction","label":"Post-war reconstruction","description":"Show a city undergoing deliberate post-war reconstruction, where damaged masonry and scarred concrete sit beside newly erected structural frames, repaired utilities and organized building materials. Communicate both loss and civic determination through safe work zones, temporary supports and evidence of careful rebuilding, without depicting active combat or sensational destruction. Let emerging infrastructure and human-scale signs of renewal define the atmosphere, and preserve a clear, physically plausible painted ATLAS artwork as part of the recovering place."},
+        {"id":"biopunk","label":"Biopunk","description":"Envision a biopunk future where biotechnology, cultivated materials and engineered ecosystems shape the built environment. Suggest laboratories, translucent biofabricated panels, carefully controlled growing systems and organic forms supported by credible technical infrastructure, avoiding grotesque or uncontrolled mutation. Balance living textures with precise maintenance details so the world feels designed and inhabited. Keep the architecture photorealistic and make the painted ATLAS lettering a distinct, durable human intervention within this technologically transformed setting."},
+        {"id":"solarpunk-moonbase","label":"Lunar technology outpost","description":"Place the architecture at a remote lunar technology outpost, with pressure-rated modules, dust-managed walkways, antennae, power storage and robotic service equipment arranged for practical operation. Show lunar terrain, fine regolith, a black sky and reflective thermal materials with technical accuracy. Any visible habitat light must follow supplied live time context rather than impose a separate lighting effect. Structures must appear sealed, anchored and connected rather than floating props. Integrate the ATLAS artwork on a sheltered panel, maintaining legibility and a convincing sense of scale."},
+        {"id":"climate-adaptation","label":"Climate adaptation","description":"Depict a technology-enabled climate adaptation district designed for severe heat, flooding and changing weather. Include raised pedestrian routes, floodable public space, shaded structures, water storage, resilient utilities and passive cooling measures whose construction is visible and credible. Let the environment communicate both climatic pressure and practical preparation without turning into disaster spectacle. Use material wear and water marks as evidence of lived experience, while keeping the painted ATLAS work prominent on a durable, believable surface."}
+      ]
+    },
+    {
+      "id": "wildstyle-variation",
+      "label": "Wildstyle treatment",
+      "entries": [
+        {"id":"interlocking-bars","label":"Interlocking bars","description":"Render the word exclusively as wildstyle graffiti, varying the formulation through tightly interlocked angular bars that weave across neighboring letterforms while preserving a distinct skeleton for each character. Use attached extensions, sharp cuts, layered depth and energetic hand-worked edges as parts of the same wildstyle treatment, not as a separate style. Keep the exact uppercase spelling ATLAS immediately legible to a normal reader; every flourish must remain subordinate to the letters, and no overlap may conceal or change their order."},
+        {"id":"explosive-extensions","label":"Explosive extensions","description":"Present ATLAS in unmistakable wildstyle graffiti, with a more explosive arrangement of pointed extensions, directional movement and overlapping angular structures radiating from the letter skeletons. This is a variation in wildstyle formulation only: retain interlocking construction, controlled highlights and a coherent five-letter word, without borrowing another graffiti style. Preserve clear ATLAS legibility at a glance, keep every extension attached to its letter, and ensure no flourish obscures, substitutes or adds a character."},
+        {"id":"layered-depth","label":"Layered wildstyle depth","description":"Describe a dense but controlled wildstyle graffiti treatment for ATLAS, emphasizing stacked angular bars, inset cuts, carefully layered paint depth and crisp highlights that reveal how the forms interlock. Keep the design recognizably wildstyle throughout rather than shifting into another graffiti style or generic lettering. Protect the silhouette and reading order of all five uppercase characters so ATLAS remains plainly legible; secondary bars and attached flourishes must clarify movement without hiding any essential stroke."},
+        {"id":"kinetic-geometry","label":"Kinetic geometry","description":"Form ATLAS as energetic wildstyle graffiti whose interlocking angular letter skeletons create a strong sense of motion through slanted bars, attached hooks, sharp transitions and selective overlapping extensions. Vary the verbal treatment while keeping the same general wildstyle language, never introducing a different graffiti style. Make each of the five letters recognizable and the complete uppercase word ATLAS easy to read immediately, with controlled complexity, clear character order and no detached marks that could be mistaken for extra lettering."}
+      ]
+    }
+  ]
+}

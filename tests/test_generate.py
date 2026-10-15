@@ -146,22 +146,28 @@ class GeneratorConfigurationTests(unittest.TestCase):
             return options[0]
         with patch.object(generate.random, "choice", side_effect=choose):
             recipe = generate.select_recipe()
-        self.assertEqual(len(selected), len(generate.CATALOGS))
+        self.assertEqual(len(selected), 8)
         self.assertEqual(set(recipe), {facet.id for facet in generate.CATALOGS})
+        self.assertNotIn("style", recipe)
+        self.assertNotIn("lighting", recipe)
+        self.assertEqual(generate.pick_wildstyle(), ("wildstyle", generate.FIXED_WILDSTYLE.description))
         prompt = generate.build_prompt({"code": 0, "is_day": True, "local_hour": 12}, recipe)
         for facet in generate.CATALOGS:
             self.assertIn(recipe[facet.id].description, prompt)
         self.assertIn("exactly uppercase ATLAS", prompt)
+        self.assertIn(generate.FIXED_WILDSTYLE.description, prompt)
         self.assertIn("no other words", prompt)
+        self.assertIn("LIGHTING CONTEXT:", prompt)
 
     def test_catalog_chips_escape_and_legacy_metadata_renders(self):
         info = {"facets": generate.recipe_metadata({f.id: f.entries[0] for f in generate.CATALOGS}),
                 "wildstyle": '<script>'}
         card = generate._gallery_card("image.jpg", info)
-        self.assertIn("catalog.html#style-wildstyle", card)
         self.assertIn("catalog.html#palette-rainbow", card)
         self.assertNotIn("<script>", card)
-        self.assertIn("legacy", generate._gallery_card("legacy.jpg", {"wildstyle": "W1-legacy"}))
+        legacy_card = generate._gallery_card("legacy.jpg", {"wildstyle": "W1-legacy"})
+        self.assertIn("legacy", legacy_card)
+        self.assertIn("Style: legacy", legacy_card)
 
     def test_catalog_descriptions_are_detailed_and_rendered_with_chip_targets(self):
         for facet in generate.CATALOGS:
@@ -187,10 +193,17 @@ class GeneratorConfigurationTests(unittest.TestCase):
         with open(catalog_path, encoding="utf-8") as catalog_file:
             catalog_data = json.load(catalog_file)
 
-        self.assertEqual(len(catalog_data), 8)
-        self.assertEqual(sum(len(facet["entries"]) for facet in catalog_data), 26)
-        self.assertEqual(len(generate.CATALOGS), len(catalog_data))
-        for source, facet in zip(catalog_data, generate.CATALOGS):
+        self.assertEqual(set(catalog_data), {"fixed", "facets"})
+        self.assertEqual(set(catalog_data["fixed"]["wildstyle"]), {"id", "label", "description"})
+        self.assertEqual(catalog_data["fixed"]["wildstyle"]["id"], "wildstyle")
+        facet_ids = {facet["id"] for facet in catalog_data["facets"]}
+        self.assertEqual(len(catalog_data["facets"]), 8)
+        self.assertNotIn("style", facet_ids)
+        self.assertNotIn("lighting", facet_ids)
+        self.assertEqual(len(generate.CATALOGS), 8)
+        self.assertEqual(sum(len(facet["entries"]) for facet in catalog_data["facets"]), 32)
+        self.assertEqual(catalog_data["fixed"]["wildstyle"]["id"], "wildstyle")
+        for source, facet in zip(catalog_data["facets"], generate.CATALOGS):
             self.assertEqual(set(source), {"id", "label", "entries"})
             self.assertEqual((facet.id, facet.label), (source["id"], source["label"]))
             self.assertEqual(len(facet.entries), len(source["entries"]))
@@ -201,6 +214,38 @@ class GeneratorConfigurationTests(unittest.TestCase):
                     (source_entry["id"], source_entry["label"], source_entry["description"]),
                 )
                 self.assertGreaterEqual(len(entry.description), 300)
+        theme = next(facet for facet in catalog_data["facets"] if facet["id"] == "theme")
+        theme_entries = {entry["id"]: entry for entry in theme["entries"]}
+        for theme_id in ("solarpunk", "steampunk", "cyberpunk", "post-apocalyptic-salvage", "post-war-reconstruction"):
+            self.assertIn(theme_id, theme_entries)
+            self.assertGreaterEqual(len(theme_entries[theme_id]["description"]), 300)
+        theme_text = " ".join(entry["description"].lower() for entry in theme_entries.values())
+        for fixed_light in ("use warm daylight", "warm workshop light", "rain-dark concrete", "controlled habitat lighting"):
+            self.assertNotIn(fixed_light, theme_text)
+        variation = next(facet for facet in catalog_data["facets"] if facet["id"] == "wildstyle-variation")
+        self.assertEqual(len(variation["entries"]), 4)
+        for entry in variation["entries"]:
+            self.assertIn("wildstyle", entry["description"].lower())
+            self.assertIn("ATLAS", entry["description"])
+            self.assertGreaterEqual(len(entry["description"]), 300)
+
+    def test_wildstyle_variation_is_randomized_and_recorded(self):
+        variation = next(facet for facet in generate.CATALOGS if facet.id == "wildstyle-variation")
+        selected = variation.entries[-1]
+        recipe = {facet.id: facet.entries[0] for facet in generate.CATALOGS}
+        recipe[variation.id] = selected
+        self.assertEqual(generate.recipe_metadata(recipe)[variation.id], selected.id)
+        prompt = generate.build_prompt({"code": 0, "is_day": True, "local_hour": 12}, recipe)
+        self.assertIn(selected.description, prompt)
+        self.assertEqual(generate.FIXED_WILDSTYLE.id, "wildstyle")
+
+    def test_prompt_lighting_context_comes_from_live_lookup(self):
+        weather = {"code": 65, "is_day": True, "local_hour": 12,
+                   "cloud_cover": 100, "wind_kmh": 10, "precipitation_mm": 1}
+        recipe = generate.select_recipe()
+        prompt = generate.build_prompt(weather, recipe)
+        self.assertIn(f"LOCAL CONDITIONS near {generate.WEATHER_LABEL}", prompt)
+        self.assertIn(f"LIGHTING CONTEXT: {generate.lighting(weather)}", prompt)
 
 
 if __name__ == "__main__":

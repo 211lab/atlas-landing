@@ -68,22 +68,23 @@ class Facet:
     entries: tuple[CatalogEntry, ...]
 
 
-def _load_catalogs() -> tuple[Facet, ...]:
+def _load_catalogs() -> tuple[CatalogEntry, tuple[Facet, ...]]:
     path = Path(__file__).with_name("catalogs.json")
     with path.open(encoding="utf-8") as catalog_file:
         data = json.load(catalog_file)
-    return tuple(
+    fixed_data = data["fixed"]["wildstyle"]
+    fixed = CatalogEntry(fixed_data["id"], fixed_data["label"], fixed_data["description"])
+    facets = tuple(
         Facet(facet["id"], facet["label"], tuple(
             CatalogEntry(entry["id"], entry["label"], entry["description"])
             for entry in facet["entries"]
         ))
-        for facet in data
+        for facet in data["facets"]
     )
+    return fixed, facets
 
 
-CATALOGS = _load_catalogs()
-
-WILDSTYLES = tuple((e.id, e.description) for e in CATALOGS[0].entries)
+FIXED_WILDSTYLE, CATALOGS = _load_catalogs()
 
 
 def select_recipe() -> dict[str, CatalogEntry]:
@@ -95,8 +96,7 @@ def recipe_metadata(recipe: dict[str, CatalogEntry]) -> dict[str, str]:
 
 
 def pick_wildstyle() -> tuple[str, str]:
-    entry = random.choice(CATALOGS[0].entries)
-    return entry.id, entry.description
+    return FIXED_WILDSTYLE.id, FIXED_WILDSTYLE.description
 
 
 def select_image_model() -> str:
@@ -405,6 +405,7 @@ def build_prompt(w: dict, recipe: dict[str, CatalogEntry]) -> str:
     )
     return (
         "Create a photorealistic architectural photograph.\n"
+        f"FIXED WILDSTYLE: {FIXED_WILDSTYLE.description}\n"
         f"VISUAL RECIPE:\n{facets}\n"
         f"LOCAL CONDITIONS near {WEATHER_LABEL}: {weather}. Respect these "
         "observed weather conditions in the visible scene.\n"
@@ -603,8 +604,8 @@ def _gallery_card(name: str, info: dict) -> str:
             chips.append(
                 f'<a class="chip" href="catalog.html#{html.escape(facet.id + "-" + entry.id, quote=True)}">'
                 f'{html.escape(facet.label)}: {html.escape(entry.label)}</a>')
-        elif facet.id == "style" and info.get("wildstyle"):
-            chips.append(f'<span class="chip">Style: {html.escape(style)}</span>')
+    if info.get("wildstyle") and not recipe:
+        chips.append(f'<span class="chip">Style: {html.escape(style)}</span>')
     chips_html = '<nav class="chips">' + "".join(chips) + "</nav>" if chips else ""
     prompt_html = ""
     if info.get("prompt"):
@@ -783,7 +784,7 @@ def main() -> int:
         "temperature_f": weather["temperature_f"],
         "temperature_c": weather["temperature_c"],
         "is_day": weather["is_day"],
-        "wildstyle": recipe["style"].id,
+        "wildstyle": FIXED_WILDSTYLE.id,
         "facets": recipe_metadata(recipe),
         "image_model": image_model,
         "vision_model": VISION_MODEL,
