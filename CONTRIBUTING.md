@@ -1,7 +1,7 @@
 # Contributing
 
 1. Fork the repository and create a focused branch.
-2. Keep deployment-specific values, credentials, and exact personal locations out of source and fixtures.
+2. Do not commit credentials or generated runtime metadata.
 3. Run `python3 -m unittest discover -s tests`, `python3 -m py_compile generator/generate.py`, and `docker build -t atlas-background .` before opening a pull request.
 4. Describe behavior changes and include test evidence. Do not include generated images, runtime metadata, or API credentials.
 
@@ -18,7 +18,3 @@ The `.gitea/workflows/build.yaml` workflow builds and pushes an image and, for v
 - `REGISTRY_USER` and `REGISTRY_TOKEN`: credentials allowed to push the image and update the GitOps repository.
 
 The GitHub workflow performs validation only and does not need these deployment secrets.
-
-## Public mirror history
-
-The public GitHub history is privacy-filtered from the deployment source, so commit IDs intentionally differ. Never force-push the raw deployment repository or its tags directly to GitHub; that would restore private configuration from older commits. Publish updates only from a full-history export processed with the maintainer-held redaction rules, then scan all branches and tags before pushing.

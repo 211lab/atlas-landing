@@ -26,6 +26,8 @@ python3 generator/generate.py
 
 The latest accepted background, metadata, and historical gallery are written under `DATA_DIR` (default `/data`). Set `DATA_DIR=./data` for a local run. Failed generation or verification leaves the previous background untouched.
 
+Each image uses an independently randomized visual recipe spanning graffiti style, placement, lens, composition, environment, paint treatment, lighting, and palette. The archived metadata records stable facet IDs and the full prompt. Gallery cards link recipe chips to the generated `catalog.html` index, which documents every available option.
+
 Run tests with:
 
 ```sh
@@ -55,7 +57,7 @@ The public workflow does not contain deployment credentials or a cluster-specifi
 
 ## Models and costs
 
-Image and vision model names are configurable with `IMAGE_MODEL` and `VISION_MODEL`. Each accepted attempt makes one image-generation and one vision request; rejected attempts are retried by the Kubernetes Job according to its policy. API costs depend on the provider's current pricing and are reported when the response includes usage data.
+Each generator run randomly selects one image model from `qwen/qwen-image-3`, `meta/muse-image`, `krea/krea-2-medium-turbo`, `bytedance-seed/seedream-5-0-flash`, `tencent/hy-image-v3.5-preview`, and `google/gemini-3.1-flash-lite-image`. Set `IMAGE_MODEL` to override that selection. The verifier remains configurable with `VISION_MODEL`. Each accepted attempt makes one image-generation and one vision request; rejected attempts are retried by the Kubernetes Job according to its policy. API costs depend on the provider's current pricing and are reported when the response includes usage data.
 
 ## License
 
