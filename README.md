@@ -34,6 +34,10 @@ Run tests with:
 python3 -m unittest discover -s tests
 ```
 
+## Prompt generator
+
+Use the [ATLAS prompt generator](https://211lab.github.io/atlas-landing/) to inspect and toggle the visual options, then generate and copy a randomized plain-text prompt for your vLLM. It runs entirely in the browser and does not call vLLM, OpenRouter, or any image API.
+
 ## Container
 
 ```sh
