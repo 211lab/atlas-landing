@@ -20,9 +20,10 @@ import os
 import random
 import sys
 import time
+from dataclasses import dataclass
 import urllib.error
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from PIL import Image
 
@@ -36,7 +37,15 @@ LON = os.environ.get("WEATHER_LON", "").strip()
 PLACE = os.environ.get("WEATHER_PLACE", "").strip()
 WEATHER_LABEL = os.environ.get("WEATHER_LABEL", "").strip()
 
-IMAGE_MODEL = os.environ.get("IMAGE_MODEL", "google/gemini-2.5-flash-image")
+IMAGE_MODELS = (
+    "qwen/qwen-image-3",
+    "meta/muse-image",
+    "krea/krea-2-medium-turbo",
+    "bytedance-seed/seedream-5-0-flash",
+    "tencent/hy-image-v3.5-preview",
+    "google/gemini-3.1-flash-lite-image",
+)
+IMAGE_MODEL = os.environ.get("IMAGE_MODEL")
 VISION_MODEL = os.environ.get("VISION_MODEL", "google/gemini-2.5-flash")
 # The artwork is a balanced 3:2 landscape; the API request must match the
 # aspect ratio named in the prompt.
@@ -45,28 +54,87 @@ ASPECT_RATIO = os.environ.get("ASPECT_RATIO", "3:2")
 # Wildstyle treatments, chosen at random for every generation. Weather talk in
 # these fragments is intentionally absent: the scene weather comes from the
 # live Open-Meteo conditions.
-WILDSTYLES = [
-    ("W1-barely-technical",
-     "The wall is a clean neon/UV-lit surface and the only future-tech is a "
-     "couple of glowing circuit-trace accents running inside the letterforms."),
-    ("W2-neon-back-alley",
-     "Chrome-tinted wildstyle in a neon-lit back-alley composition: blurred "
-     "holographic light panels glow far behind the piece and reflections play "
-     "across the paint, while the piece itself stays clean."),
-    ("W3-half-lit-decay",
-     "Half of the piece glows with healthy neon while the other half flickers "
-     "or is burnt out; the surrounding mega-city wall shows only peeling "
-     "paint, dangling cables and steam vents, with no other markings "
-     "anywhere."),
-    ("W4-post-apocalyptic",
-     "The neon is weathered, scratched and scorched, fighting to stay lit on "
-     "a ruined wall of cracked concrete and exposed rebar, with drifting ash "
-     "and a single working drone light, and no other markings on the wall."),
-]
+@dataclass(frozen=True)
+class CatalogEntry:
+    id: str
+    label: str
+    description: str
+
+
+@dataclass(frozen=True)
+class Facet:
+    id: str
+    label: str
+    entries: tuple[CatalogEntry, ...]
+
+
+def _entries(*values: tuple[str, str, str]) -> tuple[CatalogEntry, ...]:
+    return tuple(CatalogEntry(*value) for value in values)
+
+
+CATALOGS = (
+    Facet("style", "Graffiti style", _entries(
+        ("wildstyle", "Wildstyle", "Build ATLAS from intricate, interlocking angular letter skeletons with energetic extensions, overlapping bars, sharp cuts and carefully controlled highlights. Give the paint layered depth, hand-worked edges and lively movement, while keeping each of the five primary letter shapes individually recognizable at a glance. Keep every flourish attached to or clearly subordinate to its letter; never let complexity change the exact spelling."),
+        ("block", "Bold block", "Use broad, substantial block-letter forms with clean outer edges, steady stroke weight and deliberate, generous spacing between all five letters. Show opaque hand-painted fills, subtle dimensional shading at the edges and slight surface texture rather than slick digital typography. Keep the silhouettes distinct and the complete word ATLAS immediately readable without relying on surrounding context."),
+        ("organic", "Organic flow", "Shape the letters with rounded, fluid contours, sweeping connections and expressive changes in stroke weight that suggest confident movement by a skilled hand. Let the painted edges retain small natural variations and soft overlaps, with highlights following the curves instead of creating rigid geometric bars. Preserve a clear skeleton for each letter, so the flowing treatment still reads exactly ATLAS."),
+    )),
+    Facet("placement", "Placement", _entries(
+        ("wall", "Monumental wall", "Place the entire artwork on one broad, continuous architectural wall large enough to hold the complete word without wrapping around a corner. Show believable wall material, construction joints, weathering and a surface plane that recedes naturally in the chosen view. The pigment must visibly follow and adhere to that plane, with no floating letters or paint extending onto unrelated structures."),
+        ("sign", "Freestanding sign", "Mount the complete painted artwork on a large freestanding urban sign with a credible sign face, visible structural supports and convincing attachment details. Make the sign's thickness, scale and weather exposure readable, and ensure it stands securely within the environment rather than appearing suspended without support. Keep the painted letters confined to the sign face and fully visible."),
+        ("panel", "Elevated panel", "Put the artwork on a substantial elevated panel that is visibly integrated into the site through credible brackets, beams or structural supports. Communicate the panel's material, thickness and height with realistic perspective and contact shadows, while leaving enough clear face for all five letters. Paint must conform to the panel surface and must not become part of the surrounding architecture."),
+    )),
+    Facet("lens", "Lens", _entries(
+        ("normal", "Natural lens", "Photograph with a natural 40mm full-frame-equivalent rectilinear lens, giving the subject familiar proportions and a calm, documentary perspective. Preserve straight architectural lines and realistic relative scale, with neither conspicuous foreshortening nor exaggerated background compression. Keep the whole word sharp enough to read."),
+        ("wide", "Moderate wide", "Use a moderate 28mm full-frame-equivalent rectilinear lens to include useful environmental context and a sense of spatial depth. Keep nearby and distant elements proportionate, with straight lines remaining straight and no fisheye curvature, stretched corners or distorted lettering. The complete artwork must remain legible across the frame."),
+        ("telephoto", "Compressed view", "Photograph from farther away with a 70mm full-frame-equivalent rectilinear lens, gently compressing the apparent distance between architectural layers. Retain natural perspective and undistorted letter shapes while allowing the setting to form a clean backdrop. Frame the entire word clearly rather than cropping it through the narrower field of view."),
+    )),
+    Facet("composition", "Composition", _entries(
+        ("centered", "Centered", "Place the complete artwork prominently near the center of the frame, with deliberate breathing room around its edges and a balanced distribution of visual weight. Use surrounding architecture and small scale cues to establish size without competing with the painted word. Maintain a clear silhouette and keep every letter comfortably inside the image boundaries."),
+        ("diagonal", "Diagonal", "Arrange the viewpoint and architectural lines to create a purposeful diagonal movement through the composition, adding energy without making the artwork appear unstable. Let the diagonal support the viewer's eye through the complete word while preserving a clear reading order. Keep all essential letterforms inside the frame and visually dominant over the setting."),
+        ("off-center", "Off-center", "Position the artwork deliberately away from the exact center and use the remaining frame for atmospheric architectural context and negative space. Balance that open area with credible forms, light and scale cues so the image feels composed rather than accidentally cropped. Keep ATLAS fully visible, prominent and easy to read."),
+    )),
+    Facet("environment", "Environment", _entries(
+        ("brutalist", "Brutalist", "Set the scene among monumental raw-concrete structures with board marks, exposed aggregate, deep recesses, massive stairs and heavy structural silhouettes. Use believable joints, cantilevers and durable urban infrastructure to convey scale and weight rather than fantasy geometry. Let the architecture frame the artwork and provide atmosphere without swallowing or forming its letters."),
+        ("industrial", "Industrial", "Set the scene in a substantial working industrial site, with steel frames, service platforms, weathered cladding, pipes or loading structures arranged with credible construction logic. Show material differences such as oxidized metal, worn paint and concrete contact surfaces, plus realistic wear where equipment is exposed to weather. Preserve a clear view of the artwork and avoid turning infrastructure into typography."),
+        ("urban", "Urban plaza", "Set the scene in a spacious contemporary urban plaza with durable public architecture, paved ground and believable city context. Use restrained details such as seating, lighting or distant facades to suggest a real civic place without cluttering the frame with readable signs or text. Keep the painted surface physically plausible and make the artwork the clear visual focus."),
+    )),
+    Facet("paint", "Paint and application", _entries(
+        ("layered-spray", "Layered spray", "Render the artwork as several genuine aerosol passes, with fine overspray halos, visible pigment grain and selective controlled drips. Let color layers overlap naturally and follow the underlying surface texture, with believable coverage, edge softness and adhesion. Avoid the uniformly smooth finish of vector graphics or digitally pasted lettering."),
+        ("brush-marker", "Brush and marker", "Show deliberate brush-painted fills with crisp marker outlines and subtle evidence of hand-applied strokes, bristle direction and changing pressure. Make the paint sit on the surface with realistic edges and slight texture, while the marker contour remains controlled rather than mechanically perfect. Keep the fills opaque enough for strong contrast and the outlines subordinate to readable letter shapes."),
+        ("stencil", "Stencil layers", "Build the image from carefully aligned stencil-painted layers, with clean intentional boundaries and slight aerosol texture around selected edges. Suggest real masking and successive paint applications through small registration variations and believable coverage, not a perfectly digital overlay. Keep each color layer contained within the letter design and ensure the stencil treatment does not obscure the spelling."),
+    )),
+    Facet("lighting", "Lighting and effects", _entries(
+        ("daylight", "Directional daylight", "Illuminate the scene with directional natural daylight that creates coherent, physically grounded shadows across the architecture and painted surface. Use restrained atmospheric depth and realistic highlights that reveal both material texture and paint relief. Light every letter consistently with its surroundings and retain sufficient contrast for clear reading."),
+        ("night-neon", "Night neon", "Create a believable night scene lit by practical urban fixtures and restrained neon sources, with colored spill falling naturally onto nearby concrete or metal. Show reflections only on surfaces whose finish would reflect them, and preserve dark areas and shadow detail rather than flooding the scene with glow. Keep the lettering itself visible, evenly readable and physically integrated in the available light."),
+        ("mist", "Atmospheric mist", "Use soft directional illumination passing through a light veil of environmental mist, creating gentle depth between foreground and distant structures. Keep haze subtle around the artwork so paint texture and letter edges stay sharp, with sufficient local contrast across all five characters. Ensure highlights and shadows remain consistent with one plausible light source."),
+    )),
+    Facet("palette", "Color palette", _entries(
+        ("rainbow", "Rainbow", "Distribute a vivid but controlled full rainbow progression across the painted letters, with distinct red, orange, yellow, green, blue and violet passages that transition cleanly. Keep hue boundaries and highlights readable over the letter structure instead of dissolving into a random multicolor haze. Restrict the strongest saturation to the paint and keep surrounding materials visually cohesive and restrained."),
+        ("red", "Red hues", "Use a coherent range of crimson, scarlet, vermilion and warm red highlights across the painted letters, with darker burgundy depth where shading is needed. Separate neighboring forms through value and surface detail rather than introducing unrelated dominant colors. Keep the surrounding scene comparatively neutral so the red paint reads clearly without clipping into featureless neon."),
+        ("blue", "Blue hues", "Use a coherent range of deep navy, cobalt, cyan and cool blue highlights across the painted letters, balancing dark saturated fills with lighter readable edges. Preserve enough contrast between adjacent shapes that their construction remains clear, and avoid turning the whole environment into a monochrome blue wash. Let concrete and metal retain believable neutral material colors."),
+        ("mcdonalds", "McDonald's red and yellow", "Use a bold, unmistakable combination of saturated red and bright golden yellow across the painted letters, with clear separation and balanced distribution of both colors. Add darker red shading and warm yellow highlights only where they help explain paint depth and shape; keep the palette vivid but controlled. This is a color treatment only: include no McDonald's logo, arches, lettering, packaging, brand mark or other branded object."),
+        ("earth", "Earth tones", "Use a cohesive palette of ochre, rust, warm ivory and deep brown across the painted letters, with subtle shifts between warm light and dark passages. Let pigment texture and tonal separation define the shapes rather than relying on intense saturation. Keep surrounding concrete, weathered metal and other materials naturally compatible with the muted earthy paint."),
+    )),
+)
+
+WILDSTYLES = tuple((e.id, e.description) for e in CATALOGS[0].entries)
+
+
+def select_recipe() -> dict[str, CatalogEntry]:
+    return {facet.id: random.choice(facet.entries) for facet in CATALOGS}
+
+
+def recipe_metadata(recipe: dict[str, CatalogEntry]) -> dict[str, str]:
+    return {facet.id: recipe[facet.id].id for facet in CATALOGS}
 
 
 def pick_wildstyle() -> tuple[str, str]:
-    return random.choice(WILDSTYLES)
+    entry = random.choice(CATALOGS[0].entries)
+    return entry.id, entry.description
+
+
+def select_image_model() -> str:
+    return os.environ.get("IMAGE_MODEL") or random.choice(IMAGE_MODELS)
 
 
 # Camera and framing facets, drawn independently for every generation so the
@@ -362,172 +430,27 @@ def lighting(w: dict) -> str:
     return f"{light} {base}"
 
 
-def build_prompt(w: dict, style_txt: str, camera_txt: str) -> str:
+def build_prompt(w: dict, recipe: dict[str, CatalogEntry]) -> str:
     weather = weather_elements(w)
     light = lighting(w)
-    return (
-        "Create an extraordinary, cinematic architectural photograph whose main "
-        "subject is a monumental piece of wildstyle graffiti spelling exactly "
-        "the word \"ATLAS\", painted across an immense physical surface or "
-        "fixture within a dramatic brutalist architectural environment. "
-        "The graffiti is the hero of the image; the surrounding architecture "
-        "and supporting structures provide context, scale and atmosphere, "
-        "never becoming part of the lettering. "
-
-        "CORE CONCEPT: the five letters \"ATLAS\" form one huge, visually "
-        "commanding graffiti masterpiece that dominates the composition as "
-        "a single continuous piece. The graffiti may appear on a monumental "
-        "concrete wall, oversized industrial sign, elevated billboard, "
-        "freestanding architectural panel, massive metal structure, "
-        "retaining wall, suspended signage or another physically believable "
-        "urban fixture. The lettering must remain authentic painted graffiti, "
-        "not buildings, megastructures or architecture-shaped letters. "
-        "The supporting surface should feel naturally integrated into the "
-        "environment, with realistic structural connections, mounting "
-        "hardware and physical construction where appropriate. "
-
-        "TYPOGRAPHY AND LETTEROGRAPHY (wildstyle graffiti): full wildstyle "
-        "construction with interlocking letters, aggressive arrows and "
-        "extensions, overlapping bars, sharp angular cuts and folds, kinetic "
-        "highlights and hard painted 3D block shadows; an authentic, complex "
-        "piece by a world-class graffiti writer in which every letter remains "
-        "identifiable and the word unmistakably reads ATLAS. The lettering "
-        "should have monumental presence, controlled drips and overspray, "
-        "purposeful asymmetry and subtle hand-painted imperfections. "
-        "The primary letter skeletons must remain structurally recognizable "
-        "despite their intricate wildstyle connections and extensions. "
-        "The lettering must look physically applied to its supporting "
-        "surface using spray paint and markers, never constructed from "
-        "architectural elements. "
-
-        f"STYLE TREATMENT: {style_txt} "
-
-        "BRUTALIST SETTING: place the graffiti within an expansive brutalist "
-        "architectural complex of colossal raw-concrete towers, monolithic "
-        "retaining walls, vast brutalist plazas, cantilevered platforms, "
-        "massive staircases, monumental pillars, elevated walkways and "
-        "dramatic industrial infrastructure. Draw inspiration from Soviet-era "
-        "megastructures, Japanese Metabolist architecture and speculative "
-        "architectural photography, creating an environment that feels "
-        "ancient, futuristic, intimidating and strangely sacred. "
-        "The graffiti-bearing surface or fixture is the primary focal "
-        "element, while the surrounding architecture frames it, establishes "
-        "scale and contributes to the visual atmosphere. The graffiti may "
-        "be mounted on, suspended from, integrated into or positioned "
-        "independently within the architectural environment, provided "
-        "its physical placement remains believable. "
-
-        "IMMENSE SCALE AND PERSPECTIVE: the graffiti is monumental, several "
-        "storeys tall or otherwise dramatically oversized, dwarfing nearby "
-        "people and architectural details. Include several extremely tiny "
-        "human silhouettes near the artwork or within the surrounding "
-        "environment to communicate its immense scale. Use expressive but "
-        "physically believable architectural photography, allowing low "
-        "street-level camera positions, upward-looking perspectives, "
-        "three-quarter views, diagonal framing, off-axis compositions "
-        "and intentional Dutch angles. The camera may look dramatically "
-        "upward at the artwork from ground level, creating a powerful "
-        "sense of height, depth and architectural presence. Camera "
-        "rotation and dynamic viewpoints are encouraged when they "
-        "strengthen the composition. Use natural rectilinear photographic "
-        "optics, generally equivalent to a 35mm to 50mm full-frame lens, "
-        "with realistic perspective and controlled foreshortening. "
-        "Natural perspective convergence is permitted when physically "
-        "appropriate, but avoid fisheye effects, ultra-wide-angle "
-        "stretching, warped geometry, curved straight lines, exaggerated "
-        "lens distortion and unnatural deformation of the graffiti. "
-        "The artwork must retain its recognizable letterforms regardless "
-        "of the camera position or viewing angle. "
-
-        f"{camera_txt} "
-
-        "MATERIALS AND TEXTURES: highly realistic physical surfaces "
-        "appropriate to the selected graffiti-bearing structure, including "
-        "weathered board-formed concrete, painted industrial metal, "
-        "oxidized steel, aged signage, distressed architectural panels, "
-        "industrial cladding or other believable urban materials. "
-        "Show authentic surface imperfections such as concrete grain, "
-        "construction seams, exposed aggregate, erosion, rust, dark "
-        "water stains, mineral deposits, chipped edges, scratches, "
-        "fading and accumulated environmental wear where appropriate. "
-        "The graffiti displays layered spray-paint, visible pigment "
-        "texture, subtle ageing, controlled drips, realistic paint "
-        "coverage and hard-edged overspray, physically adhering to "
-        "the underlying surface. Surface texture should remain visible "
-        "through the paint where appropriate, reinforcing the appearance "
-        "of genuine graffiti rather than digitally composited lettering. "
-
-        "COLOR PALETTE: restrained and cinematic overall, charcoal black, "
-        "graphite grey, cold concrete silver, desaturated slate and muted "
-        "industrial ivory, with the graffiti carrying the boldest colour "
-        "contrast as vivid but controlled paint. Incorporate subtle "
-        "oxidized orange, weathered metal tones or faded safety red "
-        "accents within the architecture and industrial fixtures. "
-        "Allow the selected graffiti style treatment to influence "
-        "the artwork's paint colours while keeping the surrounding "
-        "environment visually cohesive and appropriately restrained. "
-        "Avoid excessive saturation across the entire image and let "
-        "the visual impact come from the letterforms, monumental scale, "
-        "material realism, architectural atmosphere and dramatic light. "
-
-        f"LOCAL CONDITIONS near {WEATHER_LABEL}, rendered faithfully into the scene: "
-        f"{weather}. "
-
-        f"LIGHTING AND ATMOSPHERE: {light} "
-
-        "COMPOSITION AND ART DIRECTION: standard landscape composition "
-        "with a balanced 3:2 aspect ratio, filling the entire frame "
-        "edge to edge without panoramic cropping, letterboxing, black "
-        "bars, borders or vignette. The graffiti word ATLAS remains "
-        "the unmistakable primary subject, clearly visible in its "
-        "entirety with all five letters recognizable. Allow creative "
-        "camera positioning, dramatic diagonal compositions, low-angle "
-        "upward views, off-axis framing and intentional Dutch angles "
-        "when they strengthen the image. The graffiti may occupy a "
-        "large central or dynamically positioned area of the frame, "
-        "with the surrounding brutalist environment providing depth, "
-        "negative space and architectural context. The composition "
-        "does not need to be symmetrical, perfectly level or strictly "
-        "frontal. Preserve realistic proportions, credible physical "
-        "geometry and natural photographic perspective while allowing "
-        "expressive framing and dramatic spatial relationships. "
-        "Ensure that the entire word remains within the image boundaries "
-        "without clipping any essential letterforms. The supporting "
-        "surface may be viewed frontally, diagonally or from below, "
-        "provided the graffiti remains visually dominant and legible. "
-
-        "RENDERING AND FINISH: photorealistic architectural photography "
-        "combined with high-end graffiti lettering craft, cinematic "
-        "environmental realism, ultra-detailed material rendering, "
-        "physically based lighting, realistic atmospheric perspective, "
-        "accurate physical geometry and sophisticated editorial art "
-        "direction. Emphasize the appearance of a professionally "
-        "captured real-world photograph with expressive camera placement, "
-        "natural lens characteristics, realistic optical behavior, "
-        "authentic surface interaction and no artificial geometric "
-        "warping. Maintain photographic credibility while achieving "
-        "an extraordinary sense of scale, environmental immersion "
-        "and visual originality. "
-
-        "CRITICAL REQUIREMENTS: the image must contain exactly five letters "
-        "spelling ATLAS, in the correct order A, T, L, A, S, in uppercase, "
-        "and all five letters must remain clearly recognizable. "
-        "The lettering is authentic wildstyle graffiti paint applied "
-        "to a believable physical surface or fixture, NOT architecture: "
-        "do not turn the letters into buildings, towers, megastructures "
-        "or sculptural architectural forms. The graffiti is not required "
-        "to be on a concrete wall and may occupy any suitable believable "
-        "urban surface or structural fixture. Camera angles may be "
-        "dramatic, tilted, diagonal or low to the ground, but must "
-        "maintain natural photographic optics without fisheye distortion "
-        "or artificial stretching. No panoramic framing, no extreme "
-        "wide-angle distortion, no additional words, no captions, "
-        "no logos, no watermarks, no decorative borders, no black "
-        "bars, no letterboxing and no other text of any kind. The surface "
-        "around the ATLAS piece is otherwise bare: no background tags or "
-        "markings. The artwork fills the whole canvas."
+    facets = "\n".join(
+        f"{facet.label}: {recipe[facet.id].description}"
+        for facet in CATALOGS
     )
-
+    return (
+        "Create a photorealistic architectural photograph.\n"
+        f"VISUAL RECIPE:\n{facets}\n"
+        f"LOCAL CONDITIONS near {WEATHER_LABEL}: {weather}. Respect these "
+        "observed weather conditions in the visible scene.\n"
+        f"LIGHTING CONTEXT: {light}\n"
+        "SHARED INVARIANTS: The artwork spells exactly uppercase ATLAS in the "
+        "correct order. All five letters must be clearly recognizable and the "
+        "complete word must remain inside the frame. The painted artwork is "
+        "physically integrated with and adheres to its believable supporting "
+        "surface. Do not add any other words, lettering, tags, logos, captions, "
+        "watermarks or marks; no other words are allowed. Use natural photographic optics, realistic "
+        "materials and credible physical geometry."
+    )
 
 def refine_image(raw: bytes) -> bytes:
     """Strip uniform letterbox bars and return the artwork as a real JPEG."""
@@ -555,9 +478,9 @@ def refine_image(raw: bytes) -> bytes:
     return buf.getvalue()
 
 
-def generate_image(prompt: str) -> tuple[bytes, dict]:
+def generate_image(prompt: str, image_model: str) -> tuple[bytes, dict]:
     payload = {
-        "model": IMAGE_MODEL,
+        "model": image_model,
         "prompt": prompt,
         "n": 1,
         "aspect_ratio": ASPECT_RATIO,
@@ -575,6 +498,10 @@ def verify_image(image_bytes: bytes, w: dict) -> dict:
     b64 = base64.b64encode(image_bytes).decode()
     phase = time_of_day(w)
     cond = WMO.get(w["code"], "variable weather")
+    # The prompt deliberately overrides time-of-day light when the sky is
+    # overcast, foggy or precipitating (there is no golden-hour sun under dense
+    # cloud), so the reviewer must judge weather, not the hour's light quality.
+    day_night = "daytime" if w.get("is_day") else "night"
     content = [
         {
             "type": "text",
@@ -583,24 +510,31 @@ def verify_image(image_bytes: bytes, w: dict) -> dict:
                 "and reply with ONLY a JSON object with boolean keys "
                 "\"spelling_ok\", \"photorealistic\", \"matches_weather\", "
                 "\"framing_ok\", and a short string \"notes\". spelling_ok is "
-                "true only if the uppercase word \"ATLAS\" appears exactly "
-                "once, spelled A-T-L-A-S in that order, and it is the only "
-                "readable word in the image. Wildstyle elements that are "
-                "integral parts of the letters themselves — arrows, "
-                "extensions, cross-outs, flourishes, circuit traces or "
-                "chrome accents — do NOT count as other text. Faint, small "
-                "or illegible background markings, weathering stains or "
+                "true only if the uppercase word \"ATLAS\" is legible in order "
+                "as A-T-L-A-S and it is the only readable word in the image. "
+                "Wildstyle is expected to be highly stylised: arrows, "
+                "extensions, cross-outs, flourishes, interlocking bars, "
+                "circuit traces and chrome accents are integral parts of the "
+                "letters and do NOT count as other text, and stylised letter "
+                "shapes are NOT a failure as long as a normal reader would "
+                "read the piece as ATLAS rather than a different word. Faint, "
+                "small or illegible background markings, weathering stains or "
                 "abstract marks that cannot be read as words or letters are "
-                "tolerated and do not fail the check. spelling_ok is false "
-                "only if there are separate additional READABLE words, "
-                "letters, tags, captions, logos or signatures besides the "
-                "ATLAS piece. "
+                "tolerated. spelling_ok is false only if the piece reads as a "
+                "different word, letters are missing, substituted or extra, or "
+                "there are separate additional READABLE words, tags, captions, "
+                "logos or signatures besides the ATLAS piece. "
                 "photorealistic is true "
                 "only if the image looks like a real architectural photograph "
                 "or visualization rather than a flat illustration, cartoon or "
-                "painting. matches_weather is true only if the scene, weather "
-                f"effects and lighting are consistent with: {cond}, temperature "
-                f"{w.get('temperature_f'):.0f}°F, {phase}. framing_ok is true "
+                "painting. matches_weather is true only if the sky, "
+                "precipitation, surface wetness and time of day are consistent "
+                f"with: {cond}, temperature {w.get('temperature_f'):.0f}°F, "
+                f"{day_night} around {phase}. Judge the weather itself: the "
+                "exact colour, warmth or intensity of the light must NOT fail "
+                "this check — an overcast or rainy sky gives flat grey light at "
+                "any hour, and wet surfaces, mist, snow or dry pavement are the "
+                "signals that matter. framing_ok is true "
                 "only if the complete five-letter word ATLAS stays fully "
                 "inside the frame with no letter clipped by an image edge, "
                 "remains the dominant subject and stays legible from the "
@@ -687,6 +621,25 @@ def _gallery_card(name: str, info: dict) -> str:
 
     caption = (when + " · " + ", ".join(bits)
                + (f" · {style}" if style else ""))
+    model_ids = []
+    for key in ("image_model", "vision_model"):
+        model_id = info.get(key)
+        if model_id:
+            model_ids.append(f"{key.replace('_', ' ')}: {model_id}")
+    if model_ids:
+        caption += " · " + " · ".join(model_ids)
+    chips = []
+    recipe = info.get("facets") or {}
+    for facet in CATALOGS:
+        entry_id = recipe.get(facet.id)
+        entry = next((item for item in facet.entries if item.id == entry_id), None)
+        if entry:
+            chips.append(
+                f'<a class="chip" href="catalog.html#{html.escape(facet.id + "-" + entry.id, quote=True)}">'
+                f'{html.escape(facet.label)}: {html.escape(entry.label)}</a>')
+        elif facet.id == "style" and info.get("wildstyle"):
+            chips.append(f'<span class="chip">Style: {html.escape(style)}</span>')
+    chips_html = '<nav class="chips">' + "".join(chips) + "</nav>" if chips else ""
     prompt_html = ""
     if info.get("prompt"):
         prompt_html = (
@@ -695,17 +648,18 @@ def _gallery_card(name: str, info: dict) -> str:
         )
     return (
         f'<figure class="card">'
-        f'<a href="{name}"><img loading="lazy" src="thumbs/{name}" '
+        f'<a href="{html.escape(name, quote=True)}" target="_blank" rel="noopener noreferrer">'
+        f'<img loading="lazy" src="thumbs/{html.escape(name, quote=True)}" '
         f'alt="Atlas background"></a>'
-        f"<figcaption><span>{html.escape(caption)}</span>{prompt_html}"
+        f"<figcaption><span>{html.escape(caption)}</span>{chips_html}{prompt_html}"
         f"</figcaption></figure>"
     )
 
 
 def _render_gallery_index() -> None:
     """Rewrite the static gallery page from the archived images."""
-    cards = []
-    for name in sorted(os.listdir(GALLERY_DIR), reverse=True):
+    groups = {}
+    for name in os.listdir(GALLERY_DIR):
         if not name.endswith(".jpg"):
             continue
         base = name[:-4]
@@ -714,13 +668,40 @@ def _render_gallery_index() -> None:
         if os.path.exists(sidecar):
             with open(sidecar) as fh:
                 info = json.load(fh)
-        cards.append(_gallery_card(name, info))
+        local_stamp = str(info.get("generated_at_local") or "")
+        utc_stamp = str(info.get("generated_at") or "")
+        group = "Unknown date"
+        try:
+            group = date.fromisoformat(local_stamp[:10]).isoformat()
+        except ValueError:
+            try:
+                group = datetime.fromisoformat(
+                    utc_stamp.replace("Z", "+00:00")
+                ).date().isoformat()
+            except ValueError:
+                pass
+        groups.setdefault(group, []).append((name, info))
 
+    day_sections = []
+    days = sorted([day for day in groups if day != "Unknown date"], reverse=True)
+    if "Unknown date" in groups:
+        days.append("Unknown date")
+    for day in days:
+        entries = sorted(groups[day], key=lambda item: item[0], reverse=True)
+        day_sections.append(
+            f'<h2>{html.escape(day)}</h2><section class="day">'
+            + "".join(_gallery_card(name, info) for name, info in entries)
+            + "</section>"
+        )
+    count = sum(len(entries) for entries in groups.values())
+
+    _render_catalog_index()
     css = (
         "body{margin:0;background:#0b0d10;color:#cbd5e1;"
         "font-family:system-ui,sans-serif}"
         "h1{font-size:1.2rem;margin:1rem 1.2rem}"
-        "main{display:grid;grid-template-columns:repeat(auto-fill,"
+        "h2{font-size:1rem;margin:1rem 1.2rem .5rem}"
+        ".day{display:grid;grid-template-columns:repeat(auto-fill,"
         "minmax(260px,1fr));gap:.8rem;padding:0 1.2rem 2rem}"
         ".card{display:block;margin:0;text-decoration:none;color:inherit;"
         "background:#151a21;border-radius:.5rem;overflow:hidden}"
@@ -729,6 +710,9 @@ def _render_gallery_index() -> None:
         "font-size:.72rem;color:#94a3b8}"
         ".card details{margin:.2rem .6rem .6rem}"
         ".card summary{cursor:pointer;font-size:.68rem;color:#7f96ab}"
+        ".chips{display:flex;flex-wrap:wrap;gap:.3rem;padding:0 .6rem}"
+        ".chip{font-size:.65rem;color:#93c5fd;background:#202a36;"
+        "padding:.2rem .4rem;border-radius:.4rem;text-decoration:none}"
         ".card pre{white-space:pre-wrap;word-break:break-word;"
         "font-size:.62rem;line-height:1.35;color:#8aa0b4;"
         "max-height:14rem;overflow:auto;margin:.4rem 0 0}"
@@ -736,12 +720,28 @@ def _render_gallery_index() -> None:
     html_doc = (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        f"<title>Atlas background gallery ({len(cards)})</title>"
+        f"<title>Atlas background gallery ({count})</title>"
         f"<style>{css}</style></head><body>"
-        f"<h1>Atlas background gallery ({len(cards)})</h1>"
-        f'<main>{"".join(cards)}</main></body></html>'
+        f"<h1>Atlas background gallery ({count})</h1>"
+        f'<p><a href="catalog.html">Visual catalog</a></p>'
+        f'<main>{"".join(day_sections)}</main></body></html>'
     )
     atomic_write(os.path.join(GALLERY_DIR, "index.html"), html_doc.encode())
+
+
+def _render_catalog_index() -> None:
+    sections = []
+    for facet in CATALOGS:
+        entries = "".join(
+            f'<article id="{html.escape(facet.id + "-" + entry.id, quote=True)}">'
+            f'<h3>{html.escape(entry.label)}</h3><p>{html.escape(entry.description)}</p></article>'
+            for entry in facet.entries
+        )
+        sections.append(f'<section><h2>{html.escape(facet.label)}</h2>{entries}</section>')
+    doc = ('<!doctype html><html lang="en"><meta charset="utf-8">'
+           '<title>Atlas visual catalog</title><body><h1>Visual catalog</h1>'
+           '<p><a href="index.html">Gallery</a></p>' + "".join(sections) + '</body></html>')
+    atomic_write(os.path.join(GALLERY_DIR, "catalog.html"), doc.encode())
 
 
 def archive_gallery(image: bytes, meta: dict) -> tuple[bool, str]:
@@ -788,15 +788,11 @@ def main() -> int:
     log(f"conditions: {WMO.get(weather['code'], 'n/a')}, "
         f"{weather['temperature_f']:.0f}°F, day={weather['is_day']}")
 
-    style_id, style_txt = pick_wildstyle()
-    log(f"wildstyle treatment: {style_id}")
-    camera_facets, camera_txt = pick_camera()
-    log(f"camera: {camera_facets['height']}, {camera_facets['pitch']}, "
-        f"{camera_facets['framing']}, {camera_facets['roll']}, "
-        f"{camera_facets['focus']}")
-    prompt = build_prompt(weather, style_txt, camera_txt)
-    log(f"generating image with {IMAGE_MODEL}")
-    image, usage = generate_image(prompt)
+    recipe = select_recipe()
+    prompt = build_prompt(weather, recipe)
+    image_model = select_image_model()
+    log(f"generating image with {image_model}")
+    image, usage = generate_image(prompt, image_model)
     log(f"generated {len(image)} bytes (cost={usage.get('cost')})")
 
     log(f"verifying image with {VISION_MODEL}")
@@ -821,9 +817,9 @@ def main() -> int:
         "temperature_f": weather["temperature_f"],
         "temperature_c": weather["temperature_c"],
         "is_day": weather["is_day"],
-        "wildstyle": style_id,
-        "camera": camera_facets,
-        "image_model": IMAGE_MODEL,
+        "wildstyle": recipe["style"].id,
+        "facets": recipe_metadata(recipe),
+        "image_model": image_model,
         "vision_model": VISION_MODEL,
         "place": PLACE,
         "weather_area": WEATHER_LABEL,
