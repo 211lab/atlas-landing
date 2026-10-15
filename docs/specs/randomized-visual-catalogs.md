@@ -2,22 +2,24 @@
 
 ## Goal
 
-Replace the generator's fixed wildstyle-on-brutalist-scene prompt with a reviewable, extensible composition of independently randomized visual facets. Make the selected choices discoverable from archived gallery images through linked chips and a generated catalog index.
+Use fixed wildstyle lettering with a reviewable, extensible composition of independently randomized visual facets, including technology/theme and wildstyle-prompt-variation facets. Make randomized choices discoverable from archived gallery images through linked chips and a generated catalog index.
 
 ## User-visible behavior
 
-- Each generation randomly chooses one value from every visual facet catalog, including graffiti style, graffiti placement, camera/lens, composition, environment, paint/application treatment, lighting/effects, color palette, and other implemented visual contributors.
-- Wildstyle and industrial/brutalist settings remain available as options, not mandatory defaults.
+- Each generation randomly chooses one value from each random visual facet catalog: placement, camera/lens, composition, environment, paint/application, color palette, technology/theme, and wildstyle prompt variation. Lighting/effects is not randomized.
+- Graffiti lettering is always wildstyle; wildstyle is fixed prompt content, not a random option. Brutalist and industrial remain randomized environment options.
+- Wildstyle prompt variations change the treatment/emphasis wording but all explicitly require wildstyle lettering; they are not alternative graffiti styles.
+- The hourly generator derives weather and lighting from the live local lookup and current time-of-day. These lookup values remain authoritative in the backend prompt; no random lighting facet may conflict with them.
 - Every catalog value has a stable ID, a concise display label, and a verbose, self-contained description used in the image prompt and displayed in the catalog index.
-- Palette options include rainbow, red hues, blue hues, and a McDonald's red-and-yellow palette, alongside other useful palettes.
-- The generated prompt combines the selected facet descriptions with shared invariants: the artwork spells exactly ATLAS, remains legible, appears physically integrated into the scene, respects requested weather, and avoids extraneous text/marks.
+- Palette options include rainbow, red hues, blue hues, and a McDonald's red-and-yellow palette, alongside other useful palettes. Theme options include solarpunk, steampunk, cyberpunk, and related technology-oriented themes.
+- The generated prompt combines fixed wildstyle and selected facet descriptions with lookup-derived local weather/time/lighting and shared invariants: the artwork spells exactly ATLAS, remains legible, appears physically integrated into the scene, respects observed conditions, and avoids extraneous text/marks.
 - The gallery card for a newly generated image displays a chip for each selected facet. Each chip links to the corresponding value in a generated catalog index (for example, `catalog.html#palette-rainbow`).
 - The catalog index lists facet groups, values, labels, and their full detailed descriptions. It is generated from the same definitions used to form prompts and gallery chips.
 - Archived image metadata includes the complete recipe as stable facet IDs and keeps the full prompt. Existing archives with the legacy `wildstyle` key and no facet recipe remain renderable without errors; retain useful legacy style display where possible.
 
 ## Non-goals
 
-- No runtime user interface for choosing or weighting styles.
+- No backend runtime UI for selecting or weighting image-generation styles; the separate Pages prompt tool owns user-facing option toggles.
 - No new API, model provider, dependency, or external catalog file format.
 - No change to weather fetching, image generation/verifier protocol, acceptance gate, output paths, or non-fatal gallery archival behavior.
 - No guarantee that an image model follows every prompt detail; this change randomizes and records prompt inputs, not model output.
@@ -25,10 +27,11 @@ Replace the generator's fixed wildstyle-on-brutalist-scene prompt with a reviewa
 
 ## Acceptance criteria
 
-1. **Given** the catalog definitions, **when** a recipe is selected, **then** it contains exactly one catalog value for each supported facet and each value is selected from that facet's available options.
+1. **Given** the catalog definitions, **when** a recipe is selected, **then** it contains exactly one value for each randomized facet, excludes fixed wildstyle, and each value comes from that facet's options.
 2. **Given** random selection, **when** tests inject or patch the random source, **then** all facets can be deterministically selected and each catalog is consulted once; the implementation remains straightforward to extend by adding catalog values.
-3. **Given** the generated prompt, **when** a recipe is supplied, **then** every selected value's verbose description appears in the prompt, while shared spelling, legibility, weather, and no-extra-text requirements remain present and wildstyle/brutalist are not imposed unconditionally.
-4. **Given** accepted generation, **when** metadata is written, **then** it records stable IDs for all selected facets and the assembled prompt.
+3. **Given** the generated prompt, **when** a recipe is supplied, **then** every selected randomized value's verbose description appears in the prompt, fixed wildstyle prose and one wildstyle prompt variation are always present, and shared spelling, legibility, live weather/lighting, and no-extra-text requirements remain present.
+3a. **Given** the hourly backend builds its prompt, **when** live weather/time data is available, **then** the lookup-derived `lighting()` and `weather_elements()` instructions remain present and are not supplemented by a random lighting/effects option.
+4. **Given** accepted generation, **when** metadata is written, **then** it records stable IDs for all randomized facets, fixed `wildstyle`, and the assembled prompt.
 5. **Given** a gallery image with new recipe metadata, **when** the gallery index is rendered, **then** its card shows escaped chips whose links resolve to catalog value anchors, and the generated catalog index contains those anchors and full descriptions.
 6. **Given** legacy gallery sidecars with `wildstyle`, missing metadata, or otherwise absent new facet fields, **when** the gallery is rendered, **then** rendering succeeds and legacy images remain listed.
 7. **Given** untrusted metadata fields, **when** chips and labels are rendered as HTML, **then** dynamic visible text and attributes are safely escaped.
@@ -45,7 +48,7 @@ Replace the generator's fixed wildstyle-on-brutalist-scene prompt with a reviewa
 ## Assumptions
 
 - ASSUMPTION: A catalog entry can contain an explicit label and prompt description, and IDs are unique within a facet.
-- ASSUMPTION: Independent selection across facets is the intended interpretation of “every individual facet” being randomly chosen; catalog descriptions will avoid incompatible requirements.
+- ASSUMPTION: The user explicitly excludes weather/time-dependent lighting from random selection; the hourly backend's local lookup remains the only source of lighting and weather constraints.
 - ASSUMPTION: The static gallery catalog is generated into the runtime gallery data directory next to `index.html` and is linked from the gallery page.
 - ASSUMPTION: The repository owner confirms that the branch history and contents are scrubbed and approved for public publication.
 

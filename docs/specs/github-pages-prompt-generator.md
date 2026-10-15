@@ -6,10 +6,11 @@ Publish a dependency-free, static single-page prompt-generation tool on GitHub P
 
 ## User-visible behavior
 
-- A single responsive page lists every visual facet and every catalog option currently used by the image prompt generator: graffiti style, placement, lens, composition, environment, paint/application, lighting/effects, and color palette.
+- A single responsive page lists every randomized visual facet and every catalog option currently used by the image prompt generator: placement, lens, composition, environment, paint/application, color palette, theme, and wildstyle prompt variation.
+- The page identifies graffiti lettering as fixed wildstyle; no alternate graffiti style is offered. A separate wildstyle-prompt-variation pool may vary the treatment wording while every choice explicitly remains wildstyle. Lighting/effects is not randomized; the hourly backend derives it from live time and weather.
 - Every option displays its concise label and full detailed prompt description. Each option has an accessible checkbox; options are included in the random pool when checked by default.
 - Each generation independently chooses one enabled option per facet. A facet with no checked options is omitted from that prompt. If no option is enabled across all facets, generation reports that at least one must be enabled and does not produce an empty recipe prompt.
-- The UI visibly reports the selected option in each included facet and puts only the assembled prompt text in a selectable, read-only text area. Prompt output includes selected verbose descriptions and shared requirements (ATLAS exact spelling, legibility, physical surface integration, photorealistic materials, no extraneous text); no HTML, code fences, recipe JSON, or generated image is included.
+- The UI visibly reports the selected option in each included facet and puts only the assembled prompt text in a selectable, read-only text area. Prompt output includes fixed wildstyle prose, selected verbose descriptions, and shared requirements (ATLAS exact spelling, legibility, physical surface integration, photorealistic materials, no extraneous text); lighting is not randomized and the SPA does not claim to have live lookup data. Manual prompts defer to live time/weather context supplied by the caller. No HTML, code fences, recipe JSON, or generated image is included.
 - The prompt panel appears immediately below the page introduction, before all visual options. The prompt text area and its generate/reroll and copy controls are grouped together at the top of the tool.
 - All visual options appear below the prompt panel, grouped by facet in native collapsible sections that start closed. Each section summary identifies its facet and reflects its enabled-option count; expanding it reveals the individual option checkboxes and descriptions.
 - Layout uses generous, consistent spacing and whitespace to distinguish the prompt, selected recipe, and options, while remaining usable on narrow screens.
@@ -39,10 +40,11 @@ Publish a dependency-free, static single-page prompt-generation tool on GitHub P
 10. **Given** the tool page loads, **when** the user scans it, **then** prompt output and generate/copy controls come before the visual options.
 11. **Given** the visual options, **when** the page loads, **then** every facet is represented by a closed native disclosure section with a label and enabled count; opening it exposes all options in that facet.
 12. **Given** options are toggled, **when** the enabled pool changes, **then** the corresponding section count updates, while reset enables every option and refreshes all counts.
+13. **Given** the options and generated prompt, **when** the user inspects them, **then** graffiti lettering is fixed wildstyle with no alternate style choices, wildstyle prompt variations are clearly labeled as variations that preserve the same style, and lighting/effects has no random option.
 
 ## Constraints and design
 
-- Make `generator/catalogs.json` the single source of truth for facet IDs, labels, option IDs/labels, and detailed descriptions. Load this data in Python for the deployed generator and in the browser SPA; do not maintain a copied second catalog.
+- Make `generator/catalogs.json` the single source of truth for fixed prompt requirements and randomized facet IDs, labels, option IDs/labels, and detailed descriptions. Load this data in Python for the deployed generator and in the browser SPA; do not maintain a copied second catalog.
 - Keep the app static and dependency-free. Use semantic HTML, native controls, responsive CSS, and browser ES modules.
 - Inject the random source into the pure prompt-recipe function for deterministic unit tests.
 - Use DOM `textContent` for catalog-provided content; do not interpolate descriptions into HTML.
@@ -51,7 +53,7 @@ Publish a dependency-free, static single-page prompt-generation tool on GitHub P
 
 ## Assumptions
 
-- ASSUMPTION: "All criteria that is random" refers to the eight visual facet catalogs used by `select_recipe()`; image-model selection and environment/configuration secrets are not prompt facets and are not shown.
+- ASSUMPTION: "All criteria that is random" refers to the eight randomized visual facet catalogs used by `select_recipe()`, including wildstyle prompt-variation and theme pools; fixed wildstyle lettering, live lookup-derived lighting/weather, image-model selection, and environment/configuration secrets are not random prompt facets.
 - ASSUMPTION: Every option starts enabled. Disabling all options in one facet omits that facet; disabling all options globally is an input error.
 - ASSUMPTION: The GitHub Pages URL is the standard project site for `211lab/atlas-landing`; the deployment artifact is rooted at the repository site path.
 - ASSUMPTION: GitHub repository Pages settings allow the `github-pages` environment and GitHub Actions deployment. If repository settings prevent deploy, leave the workflow ready and report the required owner-side setting rather than changing repository security policy.

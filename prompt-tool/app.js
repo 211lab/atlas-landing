@@ -4,7 +4,7 @@ const catalogElement = document.querySelector("#catalog");
 const output = document.querySelector("#output");
 const selection = document.querySelector("#selection");
 const status = document.querySelector("#status");
-let catalogs = [];
+let catalogs = null;
 let lastSelected = [];
 
 function showSelection(items) {
@@ -26,7 +26,15 @@ function showSelection(items) {
 
 function renderCatalog() {
   catalogElement.replaceChildren();
-  for (const facet of catalogs) {
+  const fixed = document.createElement("section");
+  fixed.className = "fixed-style";
+  const fixedTitle = document.createElement("h3");
+  fixedTitle.textContent = `${catalogs.fixed.wildstyle.label} (fixed; not randomized)`;
+  const fixedDescription = document.createElement("p");
+  fixedDescription.textContent = catalogs.fixed.wildstyle.description;
+  fixed.append(fixedTitle, fixedDescription);
+  catalogElement.append(fixed);
+  for (const facet of catalogs.facets) {
     const disclosure = document.createElement("details");
     disclosure.className = "facet";
     const summary = document.createElement("summary");
@@ -68,7 +76,7 @@ function renderCatalog() {
 }
 
 function updateCounts() {
-  for (const facet of catalogs) {
+  for (const facet of catalogs.facets) {
     const inputs = [...document.querySelectorAll("input[data-option]")].filter((input) => input.dataset.option.startsWith(`${facet.id}:`));
     const enabled = enabledCount(inputs.length, inputs.filter((input) => input.checked).length);
     const count = catalogElement.querySelector(`[data-count="${facet.id}"]`);
@@ -122,7 +130,7 @@ try {
   const response = await fetch("./catalogs.json");
   if (!response.ok) throw new Error(`Catalog request failed (${response.status}).`);
   catalogs = await response.json();
-  if (!Array.isArray(catalogs)) throw new Error("Catalog data has an invalid format.");
+  if (!catalogs?.fixed?.wildstyle?.label || !catalogs.fixed.wildstyle.description || !Array.isArray(catalogs.facets)) throw new Error("Catalog data has an invalid format.");
   renderCatalog();
 } catch (error) {
   catalogElement.replaceChildren();

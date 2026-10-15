@@ -37,6 +37,11 @@ header {
   letter-spacing: .12em;
 }
 
+.context-note {
+  max-width: 48rem;
+  color: var(--muted);
+}
+
 h1 {
   font-size: clamp(2rem, 7vw, 3.5rem);
   line-height: 1.1;
@@ -88,6 +93,24 @@ button:disabled {
 .catalog {
   display: grid;
   gap: 1rem;
+}
+
+.fixed-style {
+  margin: 0;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: .6rem;
+  background: var(--panel);
+}
+
+.fixed-style h3 {
+  margin: 0;
+  color: var(--accent);
+}
+
+.fixed-style p {
+  margin: .5rem 0 0;
+  color: var(--muted);
 }
 
 .facet {
