@@ -1,4 +1,4 @@
-import { generatePrompt } from "./prompt.mjs";
+import { enabledCount, generatePrompt } from "./prompt.mjs";
 
 const catalogElement = document.querySelector("#catalog");
 const output = document.querySelector("#output");
@@ -27,10 +27,20 @@ function showSelection(items) {
 function renderCatalog() {
   catalogElement.replaceChildren();
   for (const facet of catalogs) {
-    const fieldset = document.createElement("fieldset");
-    const legend = document.createElement("legend");
-    legend.textContent = facet.label;
-    fieldset.append(legend);
+    const disclosure = document.createElement("details");
+    disclosure.className = "facet";
+    const summary = document.createElement("summary");
+    const facetName = document.createElement("span");
+    facetName.textContent = facet.label;
+    const count = document.createElement("span");
+    count.className = "facet-count";
+    count.dataset.count = facet.id;
+    count.setAttribute("aria-live", "polite");
+    count.textContent = `${facet.entries.length} / ${facet.entries.length} enabled`;
+    summary.append(facetName, count);
+    disclosure.append(summary);
+    const options = document.createElement("div");
+    options.className = "facet-options";
     for (const entry of facet.entries) {
       const card = document.createElement("div");
       card.className = "option";
@@ -39,6 +49,7 @@ function renderCatalog() {
       checkbox.type = "checkbox";
       checkbox.checked = true;
       checkbox.dataset.option = `${facet.id}:${entry.id}`;
+      checkbox.addEventListener("change", updateCounts);
       const descriptionId = `option-${facet.id}-${entry.id}-description`;
       checkbox.setAttribute("aria-describedby", descriptionId);
       const title = document.createElement("strong");
@@ -48,9 +59,20 @@ function renderCatalog() {
       description.id = descriptionId;
       description.textContent = entry.description;
       card.append(label, description);
-      fieldset.append(card);
+      options.append(card);
     }
-    catalogElement.append(fieldset);
+    disclosure.append(options);
+    catalogElement.append(disclosure);
+  }
+  updateCounts();
+}
+
+function updateCounts() {
+  for (const facet of catalogs) {
+    const inputs = [...document.querySelectorAll("input[data-option]")].filter((input) => input.dataset.option.startsWith(`${facet.id}:`));
+    const enabled = enabledCount(inputs.length, inputs.filter((input) => input.checked).length);
+    const count = catalogElement.querySelector(`[data-count="${facet.id}"]`);
+    if (count) count.textContent = `${enabled} / ${inputs.length} enabled`;
   }
 }
 
@@ -72,6 +94,7 @@ document.querySelector("#generate").addEventListener("click", () => {
 
 document.querySelector("#reset").addEventListener("click", () => {
   document.querySelectorAll("input[data-option]").forEach((input) => { input.checked = true; });
+  updateCounts();
   status.textContent = "All options enabled.";
 });
 

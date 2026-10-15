@@ -1,5 +1,9 @@
 export const SHARED_REQUIREMENTS = "The artwork spells exactly uppercase ATLAS in the correct order. All five letters must be clearly recognizable and legible. The painted artwork is physically integrated with and adheres to its believable supporting surface. Use photorealistic materials and credible physical geometry. Do not add any other words, lettering, tags, logos, captions, watermarks or marks; no extraneous text is allowed.";
 
+export function enabledCount(total, enabled) {
+  return Math.max(0, Math.min(total, enabled));
+}
+
 export function selectRecipe(catalogs, enabled, random = Math.random) {
   const selected = [];
   for (const facet of catalogs) {

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { generatePrompt, selectRecipe, SHARED_REQUIREMENTS } from "../prompt-tool/prompt.mjs";
+import { enabledCount, generatePrompt, selectRecipe, SHARED_REQUIREMENTS } from "../prompt-tool/prompt.mjs";
 
 const catalogs = [
   { id: "first", label: "First facet", entries: [{ id: "a", label: "A", description: "Description A" }, { id: "b", label: "B", description: "Description B" }] },
@@ -25,6 +25,25 @@ test("shared catalog has usable unique facets and detailed options", () => {
       assert.ok(entry.description.length >= 300);
     }
   }
+});
+
+test("every shared catalog facet and option can be counted", async () => {
+  const markup = await readFile(new URL("../prompt-tool/app.js", import.meta.url), "utf8");
+  assert.match(markup, /document\.createElement\("details"\)/);
+  assert.match(markup, /facet\.label/);
+  assert.match(markup, /entry\.label/);
+  assert.match(markup, /entry\.description/);
+  for (const facet of sharedCatalogs) {
+    assert.equal(enabledCount(facet.entries.length, facet.entries.length), facet.entries.length);
+    assert.ok(facet.entries.every((entry) => entry.label && entry.description));
+  }
+});
+
+test("enabled count is deterministic and bounded", () => {
+  assert.equal(enabledCount(5, 3), 3);
+  assert.equal(enabledCount(5, 0), 0);
+  assert.equal(enabledCount(5, 9), 5);
+  assert.equal(enabledCount(5, -1), 0);
 });
 
 test("real catalog choices all appear in generated output", () => {

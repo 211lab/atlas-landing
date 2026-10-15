@@ -15,19 +15,19 @@
       <h1>ATLAS Prompt Generator</h1>
       <p>Choose the visual details to include, then generate a plain-text image prompt.</p>
     </header>
-    <section aria-labelledby="options-title">
-      <div class="section-heading"><h2 id="options-title">Visual options</h2><button id="reset" type="button">Enable all</button></div>
-      <div id="catalog" class="catalog" aria-live="polite"><p>Loading visual catalog…</p></div>
-    </section>
-    <section aria-labelledby="selection-title">
-      <h2 id="selection-title">Selected options</h2>
-      <div id="selection" class="selection"><p>Generate a prompt to see your selections.</p></div>
-    </section>
     <section aria-labelledby="prompt-title">
       <div class="section-heading"><h2 id="prompt-title">Prompt</h2><div class="actions"><button id="generate" type="button">Generate / reroll</button><button id="copy" type="button">Copy prompt</button></div></div>
       <label class="visually-hidden" for="output">Generated prompt text</label>
       <textarea id="output" rows="14" readonly spellcheck="false"></textarea>
       <p id="status" role="status" aria-live="polite"></p>
+    </section>
+    <section aria-labelledby="selection-title">
+      <h2 id="selection-title">Selected options</h2>
+      <div id="selection" class="selection"><p>Generate a prompt to see your selections.</p></div>
+    </section>
+    <section aria-labelledby="options-title">
+      <div class="section-heading"><h2 id="options-title">Visual options</h2><button id="reset" type="button">Enable all</button></div>
+      <div id="catalog" class="catalog" aria-live="polite"><p>Loading visual catalog…</p></div>
     </section>
   </main>
 </body>
