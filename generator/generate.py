@@ -554,11 +554,9 @@ def _gallery_slug(meta: dict) -> str:
 
 
 def _gallery_card(name: str, info: dict) -> str:
-    """Render one gallery card: thumbnail, corrected meta, expandable prompt."""
-    if info.get("generated_at_local"):
-        when = f"{info['generated_at_local']} local"
-    else:
-        when = str(info.get("generated_at", ""))[:16].replace("T", " ") + " UTC"
+    """Render one gallery card with compact metadata and a recipe disclosure."""
+    when = str(info.get("generated_at_local") or
+               info.get("generated_at", "")[:16].replace("T", " "))
     wx = info.get("weather") or {}
 
     def wxval(key: str, fallback_key: str | None = None):
@@ -567,7 +565,10 @@ def _gallery_card(name: str, info: dict) -> str:
             val = info.get(fallback_key)
         return val
 
-    bits = [str(wxval("label", "label") or "unknown weather")]
+    bits = []
+    label = wxval("label", "label")
+    if label:
+        bits.append(str(label))
     temp_f = wxval("temperature_f", "temperature_f")
     if temp_f is None:
         temp_c = wxval("temperature_c", "temperature_c")
@@ -575,26 +576,17 @@ def _gallery_card(name: str, info: dict) -> str:
             temp_f = temp_c * 9 / 5 + 32
     if isinstance(temp_f, (int, float)):
         bits.append(f"{temp_f:.0f}°F")
-    for key, fmt, label in (("wind_kmh", "{:.0f} km/h", "wind"),
-                            ("humidity", "{:.0f}%", "RH"),
-                            ("cloud_cover", "{:.0f}%", "clouds"),
+    wind = wxval("wind_kmh")
+    if isinstance(wind, (int, float)):
+        bits.append(f"wind {wind * 0.621371:.0f} mph")
+    for key, fmt, label in (("cloud_cover", "{:.0f}%", "clouds"),
                             ("precipitation_mm", "{:.1f} mm/h", "precip")):
         val = wxval(key)
         if isinstance(val, (int, float)):
             bits.append(f"{label} {fmt.format(val)}")
-    if "is_day" in wx or "is_day" in info:
-        bits.append("day" if wxval("is_day", "is_day") else "night")
-    style = str(info.get("wildstyle", "")).split("-", 1)[-1].replace("-", " ")
-
-    caption = (when + " · " + ", ".join(bits)
-               + (f" · {style}" if style else ""))
-    model_ids = []
-    for key in ("image_model", "vision_model"):
-        model_id = info.get(key)
-        if model_id:
-            model_ids.append(f"{key.replace('_', ' ')}: {model_id}")
-    if model_ids:
-        caption += " · " + " · ".join(model_ids)
+    caption = " · ".join(part for part in (when, ", ".join(bits)) if part)
+    if info.get("image_model"):
+        caption += f" · model: {info['image_model']}"
     chips = []
     recipe = info.get("facets") or {}
     for facet in CATALOGS:
@@ -604,21 +596,14 @@ def _gallery_card(name: str, info: dict) -> str:
             chips.append(
                 f'<a class="chip" href="catalog.html#{html.escape(facet.id + "-" + entry.id, quote=True)}">'
                 f'{html.escape(facet.label)}: {html.escape(entry.label)}</a>')
-    if info.get("wildstyle") and not recipe:
-        chips.append(f'<span class="chip">Style: {html.escape(style)}</span>')
-    chips_html = '<nav class="chips">' + "".join(chips) + "</nav>" if chips else ""
-    prompt_html = ""
-    if info.get("prompt"):
-        prompt_html = (
-            "<details><summary>prompt</summary>"
-            f"<pre>{html.escape(str(info['prompt']))}</pre></details>"
-        )
+    chips_html = ('<details><summary>Visual recipe</summary><nav class="chips">'
+                  + "".join(chips) + "</nav></details>")
     return (
         f'<figure class="card">'
         f'<a href="{html.escape(name, quote=True)}" target="_blank" rel="noopener noreferrer">'
         f'<img loading="lazy" src="thumbs/{html.escape(name, quote=True)}" '
         f'alt="Atlas background"></a>'
-        f"<figcaption><span>{html.escape(caption)}</span>{chips_html}{prompt_html}"
+        f"<figcaption><span>{html.escape(caption)}</span>{chips_html}"
         f"</figcaption></figure>"
     )
 
@@ -690,7 +675,11 @@ def _render_gallery_index() -> None:
         f"<title>Atlas background gallery ({count})</title>"
         f"<style>{css}</style></head><body>"
         f"<h1>Atlas background gallery ({count})</h1>"
-        f'<p><a href="catalog.html">Visual catalog</a></p>'
+        f'<p><a href="catalog.html">Visual catalog</a> · '
+        f'<a href="https://git.atlas.lan/atlas-admin/atlas-landing/actions" '
+        f'target="_blank" rel="noopener noreferrer" '
+        f'title="Sign in and run the generate-background workflow">'
+        f'Generate new background</a></p>'
         f'<main>{"".join(day_sections)}</main></body></html>'
     )
     atomic_write(os.path.join(GALLERY_DIR, "index.html"), html_doc.encode())
