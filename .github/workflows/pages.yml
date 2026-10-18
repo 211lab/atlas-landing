@@ -27,7 +27,7 @@ jobs:
           mkdir -p _site
           cp -R prompt-tool/. _site/
           cp generator/catalogs.json _site/catalogs.json
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
