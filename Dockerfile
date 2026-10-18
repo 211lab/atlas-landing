@@ -5,7 +5,7 @@
 # image is used by the homepage seed init-container (to place the original
 # artwork on the shared volume before first generation) and by the scheduled
 # weather CronJob.
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
